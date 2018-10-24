@@ -12,7 +12,7 @@ resources:
 ```
 
 ## Setup
-The card supports two configuration modes, legacy mode and default mode. In legacy mode you can use your tiles settings from `customize:` to use in lovelace tiles card. To do this, simply copy the contents of `config:` to your new config in `ui-lovelace.yaml` by changing the` config: `attribute to` legancy_config: `. See the example:
+The card supports two configuration modes, legacy mode and default mode. In legacy mode you can use your tiles settings from `customize:` to use in lovelace tiles card. To do this, simply copy the contents of `config:` to your new config in `ui-lovelace.yaml` by changing the` config: `attribute to` legacy_config: `. See the example:
 
 ```yaml
 homeassistant:
@@ -44,7 +44,7 @@ views:
   - title: Title View
     cards:
       - type: custom:tiles-card
-        legancy_config:
+        legacy_config:
           color: green
           color_on: yellow
           color_off: red

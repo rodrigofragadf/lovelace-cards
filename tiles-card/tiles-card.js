@@ -14,8 +14,8 @@ class TilesCard extends HTMLElement {
 
   setConfig(config) {
 
-    if(config.legancy_config)
-      config = this._convertLegacyConfig(config.legancy_config);
+    if(config.legacy_config)
+      config = this._convertLegacyConfig(config.legacy_config);
 
     if(!config.entities) {
         throw new Error('Please define your entities');
@@ -81,7 +81,7 @@ class TilesCard extends HTMLElement {
       else if(typeof(entity.icon) == "string") entity.icon = {value: entity.icon};
 
       if(this._DOMAIN_LIST.includes(entity.domain)) paperComponent = this._createPaperDropdownMenu(entity);
-      else paperComponent = config.legancy_config ? this._createPaperButtonLegacy(entity) : this._createPaperButton(entity);
+      else paperComponent = config.legacy_config ? this._createPaperButtonLegacy(entity) : this._createPaperButton(entity);
 
       if(display == "disabled") paperComponent.disable(true);
 
@@ -126,7 +126,7 @@ class TilesCard extends HTMLElement {
         var label = this._hasLabel(entity) ? this._getLabel(entity) : "";
         var labelSec = this._hasLabelSec(entity) ? this._getLabelSec(entity) : "";
 
-        if(cardConfig.legancy_config) {
+        if(cardConfig.legacy_config) {
           if(label) paperComponent.getElementsByClassName('paperButtonLegacy')[0].innerHTML = (ironIcon ? ironIcon.outerHTML : "")+label;
           if(labelSec) paperComponent.getElementsByClassName('labelSec')[0].innerHTML = labelSec;
         } else {
@@ -567,7 +567,7 @@ class TilesCard extends HTMLElement {
     newConfig.common_settings.label = {};
     newConfig.common_settings.label_sec = {};
     newConfig.common_settings.icon = {};
-    newConfig.legancy_config = true;
+    newConfig.legacy_config = true;
     
     newConfig.common_settings.padding = "8.4px 6.85px";
     newConfig.common_settings.background.image_size = "none";
