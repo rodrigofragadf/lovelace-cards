@@ -687,6 +687,7 @@ class TilesCard extends HTMLElement {
           --tiles-default-padding: 0px;
           --tiles-default-paperlistbox-padding: 0px;
           --tiles-default-dropdownmenu-padding: 0px 5px;
+          --tiles-default-contents-color: white;
       }
       
       .grid {
@@ -711,7 +712,7 @@ class TilesCard extends HTMLElement {
           opacity: var(--tiles-opacity, var(--tiles-common-opacity, var(--tiles-default-opacity)));
           border-style: solid;
           border-width: var(--tiles-border-size, var(--tiles-common-border-size, var(--tiles-default-border-size)));
-          border-color: var(--tiles-border-color, var(--tiles-common-border-color, var(--primary-text-color)));
+          border-color: var(--tiles-border-color, var(--tiles-common-border-color, var(--tiles-default-contents-color)));
           border-radius: var(--tiles-border-radius, var(--tiles-common-border-radius, var(--tiles-default-border-radius)));
           padding: var(--tiles-default-paperlistbox-padding);
       }
@@ -720,7 +721,7 @@ class TilesCard extends HTMLElement {
           height: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
           width: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
           padding: var(--tiles-icon-padding, var(--tiles-common-icon-padding, var(--tiles-default-icon-padding)));
-          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-common-icon-color, var(--primary-text-color)));
+          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-common-icon-color, var(--tiles-default-contents-color)));
           --iron-icon-height: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
           --iron-icon-width: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
       }
@@ -734,10 +735,10 @@ class TilesCard extends HTMLElement {
           padding: var(--tiles-dropdownMenu-padding, var(--tiles-default-dropdownmenu-padding)); /* top|right|bottom|left */
           text-transform: var(--tiles-label-transform, var(--tiles-common-label-transform, none));
       
-          --paper-input-container-color: var(--tiles-label-color, var(--tiles-common-label-color, var(--primary-text-color)));
-          --iron-icon-fill-color: var(--tiles-label-color, var(--tiles-common-label-color, var(--primary-text-color)));
+          --paper-input-container-color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
+          --iron-icon-fill-color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
           --paper-listbox-background-color: var(--tiles-list-color, var(--tiles-common-list-color, var(--primary-color)));
-          --paper-listbox-color: var(--tiles-label-sec-color, var(--tiles-common-label_sec-color, var(--primary-text-color)));
+          --paper-listbox-color: var(--tiles-label-sec-color, var(--tiles-common-label_sec-color, var(--tiles-default-contents-color)));
           --paper-input-container-focus-color: var(--tiles-list-color, var(--tiles-common-list-color, var(--primary-color)));
       }
       
@@ -763,15 +764,15 @@ class TilesCard extends HTMLElement {
           background-repeat: no-repeat;
           background-position: 50% 50%;
           opacity: var(--tiles-opacity, var(--tiles-common-opacity, --tiles-default-opacity));
-          color: var(--tiles-label-color, var(--tiles-common-label-color, var(--primary-text-color)));
+          color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
           font-size: var(--tiles-label-size, var(--tiles-common-label-size, var(--tiles-default-labels-size)));
           border-style: solid;
           border-width: var(--tiles-border-size, var(--tiles-common-border-size, var(--tiles-default-border-size)));
-          border-color: var(--tiles-border-color, var(--tiles-common-border-color, var(--primary-text-color)));
+          border-color: var(--tiles-border-color, var(--tiles-common-border-color, var(--tiles-default-contents-color)));
           border-radius: var(--tiles-border-radius, var(--tiles-common-border-radius, var(--tiles-default-border-radius)));
           padding: var(--tiles-padding, var(--tiles-common-padding, var(--tiles-default-padding)));
       
-          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-common-icon-color, var(--tiles-label-color, var(--tiles-common-label-color, var(--primary-text-color)))));
+          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-common-icon-color, var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
           --iron-icon-height: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
           --iron-icon-width: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
       }
@@ -782,9 +783,9 @@ class TilesCard extends HTMLElement {
           background-position: 50% 50%;
           background-size: var(--tiles-image-size,  var(--tiles-common-image-size, contain));
           opacity: var(--tiles-opacity-on, var(--tiles-opacity, var(--tiles-common-opacity-on, var(--tiles-common-opacity, --tiles-default-opacity))));
-          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-common-label-color-on, var(--tiles-common-label-color, var(--primary-text-color)))));
+          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-common-label-color-on, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
           /* --iron-icon-stroke-color: 	Stroke color of the svg icon */
-          --iron-icon-fill-color: var(--tiles-icon-color-on, var(--tiles-icon-color, var(--tiles-common-icon-color-on, var(--tiles-common-icon-color, var(--primary-text-color)))));
+          --iron-icon-fill-color: var(--tiles-icon-color-on, var(--tiles-icon-color, var(--tiles-common-icon-color-on, var(--tiles-common-icon-color, var(--tiles-default-contents-color)))));
       }
       
       paper-button.off {
@@ -793,9 +794,9 @@ class TilesCard extends HTMLElement {
           background-position: 50% 50%;
           background-size: var(--tiles-image-size,  var(--tiles-common-image-size, contain));
           opacity: var(--tiles-opacity-off, var(--tiles-opacity, var(--tiles-common-opacity-off, var(--tiles-common-opacity, --tiles-default-opacity))));
-          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-common-label-color-off, var(--tiles-common-label-color, var(--primary-text-color)))));
+          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-common-label-color-off, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
           /* --iron-icon-stroke-color: 	Stroke color of the svg icon */
-          --iron-icon-fill-color: var(--tiles-icon-color-off, var(--tiles-icon-color, var(--tiles-common-icon-color-off, var(--tiles-common-icon-color, var(--primary-text-color)))));
+          --iron-icon-fill-color: var(--tiles-icon-color-off, var(--tiles-icon-color, var(--tiles-common-icon-color-off, var(--tiles-common-icon-color, var(--tiles-default-contents-color)))));
       }
       
       paper-button .icon {
@@ -803,33 +804,33 @@ class TilesCard extends HTMLElement {
       }
       
       paper-button .label {
-          color: var(--tiles-label-color, var(--tiles-common-label-color, var(--primary-text-color)));
+          color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
           font-size: var(--tiles-label-size, var(--tiles-common-label-size, var(--tiles-default-labels-size)));
           text-transform: var(--tiles-label-transform, var(--tiles-common-label-transform, none));
           padding: var(--tiles-label-padding, var(--tiles-common-label-padding, var(--tiles-default-labels-padding)));
       }
       
       paper-button.on .label {
-          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-common-label-color-on, var(--tiles-common-label-color, var(--primary-text-color)))));
+          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-common-label-color-on, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
       }
       
       paper-button.off .label {
-          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-common-label-color-off, var(--tiles-common-label-color, var(--primary-text-color)))));
+          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-common-label-color-off, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
       }
       
       paper-button .labelSec {
-          color: var(--tiles-label-sec-color, var(--tiles-common-label-sec-color, var(--primary-text-color)));
+          color: var(--tiles-label-sec-color, var(--tiles-common-label-sec-color, var(--tiles-default-contents-color)));
           font-size: var(--tiles-label-sec-size, var(--tiles-common-label-sec-size, var(--tiles-default-labels-size)));
           text-transform: var(--tiles-label-sec-transform, var(--tiles-common-label-sec-transform, none));
           padding: var(--tiles-label-sec-padding, var(--tiles-common-label-sec-padding, var(--tiles-default-labels-padding)));
       }
       
       paper-button.on .labelSec {
-          color: var(--tiles-label-sec-color-on, var(--tiles-label-sec-color, var(--tiles-common-label-sec-color-on, var(--tiles-common-label-sec-color, var(--primary-text-color)))));
+          color: var(--tiles-label-sec-color-on, var(--tiles-label-sec-color, var(--tiles-common-label-sec-color-on, var(--tiles-common-label-sec-color, var(--tiles-default-contents-color)))));
       }
       
       paper-button.off .labelSec {
-          color: var(--tiles-label-sec-color-off, var(--tiles-label-sec-color, var(--tiles-common-label-sec-color-off, var(--tiles-common-label-sec-color, var(--primary-text-color)))));
+          color: var(--tiles-label-sec-color-off, var(--tiles-label-sec-color, var(--tiles-common-label-sec-color-off, var(--tiles-common-label-sec-color, var(--tiles-default-contents-color)))));
       }
       
       paper-button[disabled] {
