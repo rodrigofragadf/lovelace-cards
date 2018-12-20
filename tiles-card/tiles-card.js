@@ -7,7 +7,7 @@ class TilesCard extends HTMLElement {
     this._DOMAIN_SCRIPT = ["script", "python_script"];
     this._DOMAIN_SENSOR = ["sensor", "binary_sensor", "device_tracker"];
     this._DOMAIN_NO_ONOFF = this._DOMAIN_SCRIPT.concat("sensor", "scene", "weblink");
-    this._DOMAIN_LIST = ["input_select"];
+    this._DOMAIN_INPUT_SELECT = ["input_select"];
     this._DOMAIN_REMOTE = ["remote"];
     this._ON_STATES = ["on", "open", "locked", "home"];
   }
@@ -25,19 +25,30 @@ class TilesCard extends HTMLElement {
     if(root.lastChild) root.removeChild(root.lastChild);
 
     const cardConfig = Object.assign({}, config);
-    
+
     const card = document.createElement('ha-card');
     card.header = cardConfig.card_settings.title;
 
-    this._setStylesCard(cardConfig.card_settings, card.style);
-    if(cardConfig.common_settings)
-      this._setStylesPaperComponent(cardConfig.common_settings, card.style, "common");
+    var cardStyle = document.createElement('style');
+    cardStyle.id = "cardStyle";
+    cardStyle.textContent += this._getDefaultTilesStyleValues(cardConfig);
+    cardStyle.textContent += this._getCardStyle();
+    cardStyle.textContent += this._getCardStylesValues(cardConfig.card_settings);
+    root.appendChild(cardStyle);
 
-    var content = this._createContentCard(cardConfig);
+    if(this._hasCardTheme(cardConfig)) {
+      var themeStyle = document.createElement('style');
+      themeStyle.id = "themeStyle";
+      this.themeApplied = false;
+      root.appendChild(themeStyle);
+    }
 
-    const style = document.createElement('style');
-    style.textContent += this._getGlobalStyle();
-    card.appendChild(style);
+    var entitiesStyleValues = document.createElement('style');
+    entitiesStyleValues.id = "entitiesStyleValues";
+    if(cardConfig.common_settings) entitiesStyleValues.textContent = this._getStylesPaperComponent(cardConfig.common_settings);
+    card.appendChild(entitiesStyleValues);
+
+    var content = this._createContentCard(cardConfig, entitiesStyleValues);
 
     card.appendChild(content);
     root.appendChild(card);
@@ -48,11 +59,33 @@ class TilesCard extends HTMLElement {
     this.myHass = hass;
     var card = this.shadowRoot.lastChild;
     var entitiesTiles = this._config.entities;
+    var cardConfig = this._config;
+
+    if(this._hasCardTheme(cardConfig) && !this.themeApplied){
+      this._setCardTheme(cardConfig.card_settings.theme, card);
+      this.themeApplied = true;
+    }
 
     this._updateContentCard(entitiesTiles, card);
  }
 
-  _createContentCard(config) {
+  _setCardTheme(themeName, card) {
+    var theme = this.myHass.themes.themes[themeName];
+    var style = document.createElement('style').style;
+    for(var attribute in theme) {
+      style.setProperty(`--${attribute}`, theme[attribute]);
+    }
+    card.parentNode.getElementById("themeStyle").textContent = `:host{${style.cssText}}\n`;
+  }
+
+  _hasCardTheme(cardConfig) {
+    if(cardConfig.card_settings) {
+      return cardConfig.card_settings.theme || (cardConfig.card_settings.templates && cardConfig.card_settings.templates.theme);
+    }
+    return '';
+  }
+
+  _createContentCard(config, entitiesStyleValues) {
     var entitiesTiles = config.entities;
     const content = document.createElement('div');
     content.className = "grid";
@@ -60,36 +93,59 @@ class TilesCard extends HTMLElement {
 
     entitiesTiles.forEach((entity, index) => {
 
-      // Grid Style values
-      const column = entity.column ? entity.column : 'auto';
-      const column_span = entity.column_span ? entity.column_span : 1;
-      const row = entity.row ? entity.row : 'auto';
-      const row_span = entity.row_span ? entity.row_span : 1;
       var paperComponent;
-      var display = entity.display || (config.common_settings && config.common_settings.display);
+      entity.id = "component_"+index;
 
       entity.domain = entity.entity ? entity.entity.split('.')[0] : "";
+      entity.disable = (entity.disable === undefined) ? (config.common_settings && config.common_settings.disable) : entity.disable;
 
-      if(entity.title) entity.label = entity.title;
-      if(entity.item) entity.label_sec = entity.item;
+      if(this._DOMAIN_INPUT_SELECT.includes(entity.domain)) {
+        
+        entity.icon = (entity.icon === undefined) ? (config.common_settings && config.common_settings.icon) : entity.icon;
 
-      if(!entity.label) entity.label = "";
-      else if(typeof(entity.label) == "string") entity.label = {value: entity.label};
-      if(!entity.label_sec) entity.label_sec = "";
-      else if(typeof(entity.label_sec) == "string") entity.label_sec = {value: entity.label_sec};
-      if(!entity.icon) entity.icon = "";
-      else if(typeof(entity.icon) == "string") entity.icon = {value: entity.icon};
+        if(!entity.icon) entity.icon = "";
+        else if(typeof(entity.icon) == "string") entity.icon = {value: entity.icon};
+        else if(typeof(entity.icon) == "object" && entity.icon.color && typeof(entity.icon.color) == "object") entity.icon.color = entity.icon.color.value;
 
-      if(this._DOMAIN_LIST.includes(entity.domain)) paperComponent = this._createPaperDropdownMenu(entity);
-      else paperComponent = config.legacy_config ? this._createPaperButtonLegacy(entity) : this._createPaperButton(entity);
+        if(!entity.title && config.common_settings && config.common_settings.listbox && config.common_settings.listbox.title) 
+          entity.title = config.common_settings.listbox.title;
+          
+        paperComponent = this._createPaperDropdownMenu(entity);
+      } else {
+        
+        if(entity.label === undefined && config.common_settings && config.common_settings.label) {
+          if(typeof(config.common_settings.label) == "string") entity.label = {value: config.common_settings.label};
+          else entity.label = {value: config.common_settings.label.value};
+        }
 
-      if(display == "disabled") paperComponent.disable(true);
+        if(entity.label_sec === undefined && config.common_settings && config.common_settings.label_sec) {
+          if(typeof(config.common_settings.label_sec) == "string") entity.label_sec = {value: config.common_settings.label_sec};
+          else entity.label_sec = {value: config.common_settings.label_sec.value};
+        }
 
-      paperComponent.style.gridColumn = `${column} / span ${column_span}`;
-      paperComponent.style.gridRow = `${row} / span ${row_span}`;
-      this._setStylesPaperComponent(entity, paperComponent.style);
+        if(entity.icon === undefined && config.common_settings && config.common_settings.icon) {
+          if(typeof(config.common_settings.icon) == "string") entity.icon = {value: config.common_settings.icon};
+          else {
+            entity.icon = { value: config.common_settings.icon.value, 
+                            value_on: config.common_settings.icon.value_on, 
+                            value_off: config.common_settings.icon.value_off, 
+                            value_disabled: config.common_settings.icon.value_disabled};
+          } 
+        }
 
-      paperComponent.id = "component_"+index;
+        if(!entity.icon) entity.icon = "";
+        else if(typeof(entity.icon) == "string") entity.icon = {value: entity.icon};
+        if(!entity.label) entity.label = "";
+        else if(typeof(entity.label) == "string") entity.label = {value: entity.label};
+        if(!entity.label_sec) entity.label_sec = "";
+        else if(typeof(entity.label_sec) == "string") entity.label_sec = {value: entity.label_sec};
+
+        paperComponent = config.legacy_config ? this._createPaperButtonLegacy(entity) : this._createPaperButton(entity);
+      } 
+
+      entitiesStyleValues.textContent += this._getStylesPaperComponent(entity);
+
+      paperComponent.id = entity.id;
       content.appendChild(paperComponent);
     });
 
@@ -102,7 +158,7 @@ class TilesCard extends HTMLElement {
 
     // Compute card templates if exists
     if(cardConfig.card_settings.templates) this._computeCardStylesFromTemplate(card, cardConfig.card_settings);
-    
+
     entitiesTiles.forEach((entity, index) => {
 
       var paperComponent = content.children["component_"+index]
@@ -111,6 +167,18 @@ class TilesCard extends HTMLElement {
       // Compute entity templates if exists
       if(entity.templates) this._computeEntityStylesFromTemplate(paperComponent, entity);
 
+      // Set component class
+      paperComponent.className = this._getClassPaperButton(entity);
+      entity.className = this._getClassPaperButton(entity);
+
+      // If disabled replace the classname
+      if(entity.disable === true) {
+        entity.oldIcon = this._getIconValue(entity);
+        paperComponent.className = "disabled";
+        entity.className = "disabled";
+        paperComponent.disable(true);
+      } else paperComponent.disable(false);
+
       if(ironIcon) {
         var icon = this._getIconValue(entity);
         ironIcon.removeAttribute("icon");
@@ -118,16 +186,14 @@ class TilesCard extends HTMLElement {
         ironIcon.setAttribute((icon.indexOf("mdi:") >= 0) ? "icon" : "src", icon);
       }
       
-      if(this._DOMAIN_LIST.includes(entity.domain)) {
+      if(this._DOMAIN_INPUT_SELECT.includes(entity.domain)) {
         this._updatePaperDropdownMenu(paperComponent, entity);
       } else {
-        paperComponent.className = this._getClassPaperButton(entity);
-        entity.className = this._getClassPaperButton(entity);
         var label = this._hasLabel(entity) ? this._getLabel(entity) : "";
         var labelSec = this._hasLabelSec(entity) ? this._getLabelSec(entity) : "";
 
         if(cardConfig.legacy_config) {
-          if(label) paperComponent.getElementsByClassName('paperButtonLegacy')[0].innerHTML = (ironIcon ? ironIcon.outerHTML : "")+label;
+          if(label) paperComponent.getElementsByTagName('tiles-button-legacy')[0].innerHTML = (ironIcon ? ironIcon.outerHTML : "")+label;
           if(labelSec) paperComponent.getElementsByClassName('labelSec')[0].innerHTML = labelSec;
         } else {
           if(label) paperComponent.getElementsByClassName('label')[0].innerHTML = label;
@@ -167,9 +233,7 @@ class TilesCard extends HTMLElement {
     }
 
     paperButton.disable = function(value){
-      paperButton.disabled = value;
-      if(value) paperButton.classList.add("disabled");
-      else paperButton.classList.remove("disabled");
+      paperButton.disabled = (value === true) ? true : false;
     };
 
     if(this._isClickable(entity)) paperButton.addEventListener('click', event => { this._onClick(entity) });
@@ -184,8 +248,7 @@ class TilesCard extends HTMLElement {
 
   _createPaperButtonLegacy(entity) {
     var paperButton = document.createElement('paper-button');
-    var divPaperButton = document.createElement('div');
-    divPaperButton.className = "paperButtonLegacy";
+    var divPaperButton = document.createElement('tiles-button-legacy');
     divPaperButton.style.width = "100%";
     paperButton.appendChild(divPaperButton);
     paperButton.raised = true;
@@ -209,6 +272,8 @@ class TilesCard extends HTMLElement {
       paperButton.appendChild(div);
     }
 
+    paperButton.disable = function(value){};
+
     if(this._isClickable(entity)) paperButton.addEventListener('click', event => { this._onClick(entity) });
     else paperButton.style.setProperty("cursor", "default");
 
@@ -216,13 +281,14 @@ class TilesCard extends HTMLElement {
   }
 
   _createPaperDropdownMenu(entity){
-    var divPaperDropdownMenu = document.createElement('div');
+    var divPaperDropdownMenu = document.createElement('tiles-listbox');
     var paperDropdownMenu = document.createElement('paper-dropdown-menu');
     var paperListbox = document.createElement('paper-listbox');
     var optionsList;
+
+    if(entity.icon && entity.icon.color) entity.icon.color = {value: entity.icon.color};
     
-    divPaperDropdownMenu.className = "paperListbox";
-    paperDropdownMenu.label = entity.label.value ? entity.label.value : "";
+    paperDropdownMenu.label = entity.title ? entity.title : "";
     paperDropdownMenu.className = "dropdownMenu";
     paperDropdownMenu.styleApplied = false;
     paperDropdownMenu.appendChild(paperListbox);
@@ -238,12 +304,6 @@ class TilesCard extends HTMLElement {
       divPaperDropdownMenu.appendChild(div);
     }
 
-    divPaperDropdownMenu.disable = function(value){
-      paperDropdownMenu.disabled = value;
-      if(value) divPaperDropdownMenu.classList.add("disabled");
-      else divPaperDropdownMenu.classList.remove("disabled");
-    };
-
     divPaperDropdownMenu.loadItensList = function(card, optionsListTemp) {
       optionsList = optionsListTemp;
       if(paperListbox.childElementCount <= 0){
@@ -258,6 +318,10 @@ class TilesCard extends HTMLElement {
           paperListbox.appendChild(paperItem);
         });
       }
+    };
+
+    divPaperDropdownMenu.disable = function(value){
+      paperDropdownMenu.disabled = (value === true) ? true : false;
     };
 
     divPaperDropdownMenu.setItem = function(selectedItem){
@@ -280,127 +344,247 @@ class TilesCard extends HTMLElement {
 
     if(paperDropdownMenu.shadowRoot && !divPaperDropdownMenu.styleApplied) {
       var paperInputContainer = paperDropdownMenu.shadowRoot.children[2].children[0].children[1].shadowRoot.children[1];
+      var divInputWrapper = paperInputContainer.shadowRoot.children[2];
+      var paperInputLabel = paperInputContainer.children[1];
       paperInputContainer.setAttribute("style", "padding: 0px;");
+      divInputWrapper.setAttribute("style", "height: var(--tiles-listbox-input-height, var(--tiles-common-listbox-input-height, none));");
+      paperInputLabel.setAttribute("style", "height: var(--tiles-listbox-title-height, var(--tiles-common-listbox-title-height, none));");
       var input = paperInputContainer.children[2].children[0];
-      input.setAttribute("style", "color: var(--tiles-label-sec-color, var(--tiles-common-label-sec-color, var(--primary-text-color)));");
-      if(!entity.label.value) paperInputContainer.shadowRoot.children[1].style.display = "none";
+      input.setAttribute("style", `color: var(--tiles-listbox-input-color, var(--tiles-common-listbox-input-color, var(--tiles-listbox-title-color, var(--tiles-common-listbox-title-color, #fff)))); 
+                                   text-transform: var(--tiles-listbox-input-transform, var(--tiles-common-listbox-input-transform, var(--tiles-listbox-title-transform, var(--tiles-common-listbox-title-transform, none))));`);
+      if(!entity.title) paperInputContainer.shadowRoot.children[1].style.display = "none";
+
       divPaperDropdownMenu.styleApplied = true;
     }
   }
 
-  _setStylesCard(config, style) {
-    if(config.title) style.setProperty("--tiles-card-padding-top", "0px");
-    if(config.title_color) style.setProperty("--tiles-card-title-color", config.title_color);
-    if(config.title_align) style.setProperty("--tiles-card-title-align", config.title_align);
-    if(config.gap) style.setProperty("--tiles-card-gap", config.gap);
-    if(config.padding) style.setProperty("--tiles-card-padding", config.padding);
-    if(config.background) style.setProperty("--tiles-card-background", config.background);
+  _getCardStylesValues(config) {
+    let style = '\n';
+    style += ':host {\n';
+    style += '/*CARD SETTINGS VALUES*/\n';
+    if(config.title) style += ` --tiles-card-padding-top: 0px;\n`;
+    if(config.title_color) style += ` --tiles-card-title-color: ${config.title_color};\n`;
+    if(config.title_align) style += ` --tiles-card-title-align: ${config.title_align};\n`;
+    if(config.gap) style += ` --tiles-card-gap: ${config.gap};\n`;
+    if(config.padding) style += ` --tiles-card-padding: ${config.padding};\n`;
+    if(config.background) style += ` --tiles-card-background: ${config.background};\n`;
     
     if(config.align) { 
-      if(config.align == "left") style.setProperty("--tiles-card-align", "start");
-      if(config.align == "center") style.setProperty("--tiles-card-align", "center");
-      if(config.align == "right") style.setProperty("--tiles-card-align", "end");
+      if(config.align == "left") style += ` --tiles-card-align: start;\n`;
+      if(config.align == "center") style += ` --tiles-card-align: center;\n`;
+      if(config.align == "right") style += ` --tiles-card-align: end;\n`;
     }
 
     if(config.display) {
-      if(config.display == "none") style.setProperty("--tiles-card-display", "none");
-      if(config.display == "hidden") style.setProperty("--tiles-card-visibility", "hidden");
+      if(config.display == "none") style += ` --tiles-card-display: none;\n`;
+      if(config.display == "hidden") style += ` --tiles-card-visibility: hidden;\n`;
     }
 
-    if(config.columns) style.setProperty("--tiles-card-columns", config.columns);
-    if(config.column_width) style.setProperty("--tiles-card-column-width", (config.column_width == "auto" ? "1fr" : config.column_width));
-    if(config.row_height) style.setProperty("--tiles-card-row-height", config.row_height);
+    if(config.columns) style += ` --tiles-card-columns: ${config.columns};\n`;
+    if(config.column_width) style += ` --tiles-card-column-width: ${(config.column_width) == 'auto' ? '1fr' : config.column_width};\n`;
+    if(config.row_height) style += ` --tiles-card-row-height: ${config.row_height};\n`;
+
+    return style+"}\n";
   }
 
-  _setStylesPaperComponent(tilesConfig, style, scope) {
-    var value = "--tiles";
-    value += scope ? `-${scope}-` : "-";
+  _getDefaultTilesStyleValues(cardConfig){
+    let style = '\n';
+    style += ':host {\n';
+    style += '/*DEFAULT CARD VALUES*/\n';
+    style += ` --tiles-default-card-align: start;\n`;
+    style += ` --tiles-default-card-grid-display: grid;\n`;
+    style += ` --tiles-default-card-columns: 3;\n`;
+    style += ` --tiles-default-card-column-width: 1fr;\n`;
+    style += ` --tiles-default-card-row-height: 1fr;\n`;
+    style += ` --tiles-default-card-gap: 5px;\n`;
+    style += ` --tiles-default-card-padding: 16px;\n`;
+    style += ` --tiles-default-card-display: block;\n`;
+    style += ` --tiles-default-card-visibility: visible;\n`;
+    style += ` --tiles-default-card-title-color: var(--primary-text-color);\n`;
+    style += ` --tiles-default-card-title-align: left;\n`;
+    style += ` --tiles-default-card-background: var(--tiles-default-card-title-align);\n`;
+    style += ` --tiles-default-card-background-size: cover;\n`;
+    style += ` --tiles-default-card-background-repeat: no-repeat;\n`;
+    style += ` --tiles-default-border-size: 0px;\n`;
+    style += ` --tiles-default-border-radius: 3px;\n`;
+    style += ` --tiles-default-border-style: solid;\n`;
+    style += ` --tiles-default-icon-size: 24px;\n`;
+    style += ` --tiles-default-icon-padding: 5px;\n`;
+    style += ` --tiles-default-labels-size: 1em;\n`;
+    style += ` --tiles-default-labels-padding: 0px;\n`;
+    style += ` --tiles-default-opacity: 1;\n`;
+    style += ` --tiles-default-opacity-disabled: 0.5;\n`;
+    style += ` --tiles-default-padding: ${cardConfig.legacy_config ? '8.4px 6.85px' : '0px'};\n`;
+    style += ` --tiles-default-listbox-padding: 0px;\n`;
+    style += ` --tiles-default-dropdownmenu-padding: 0px 5px;\n`;
+    style += ` --tiles-default-grayscale: none;\n`;
+    style += ` --tiles-default-contents-color: ${cardConfig.legacy_config ? '#ffffff' : 'var(--primary-text-color)'};\n`;
+    style += ` --tiles-default-box-shadow: none;\n`;
+    style += ` --tiles-default-image-size: ${cardConfig.legacy_config ? 'none' : 'contain'};\n`;
+    style += ` --tiles-default-grid-area: auto / auto / span 1 / span 1;\n`;
+    style += ` --tiles-default-display: flex;\n`;
+    style += ` --tiles-default-visibility: visible;\n`;
+    style += ` --tiles-default-background: var(--primary-color);\n`;
+    style += ` --tiles-default-margin: 0;\n`;
+    style += ` --tiles-default-min-width: 10px;\n`;
+    style += ` --tiles-default-min-height: 10px;\n`;
+    style += ` --tiles-default-listbox-orientation: row;\n`;
+    style += ` --tiles-default-orientation: column;\n`;
+    style += ` --tiles-default-vertical-align: center;\n`;
+    style += ` --tiles-default-horizontal-align: center;\n`;
+    style += ` --tiles-default-background-disabled: var(--tiles-background,  var(--tiles-default-background));\n`;
+    style += ` --tiles-default-border-color-disabled: var(--tiles-border-color, var(--tiles-default-contents-color));\n`;
+    style += ` --tiles-default-grayscale-disabled: var(--tiles-grayscale, var(--tiles-default-grayscale));\n`;
+    style += ` --tiles-default-dropdownmenu-width: 100%;\n`;
+    style += ` --tiles-default-listbox-title-transform: none;\n`;
+    style += ` --tiles-default-listbox-title-color: var(--tiles-default-contents-color);\n`;
+    style += ` --tiles-default-listbox-background-list-color: var(--tiles-background, var(--primary-color));\n`;
+    style += ` --tiles-default-listbox-itens-color: var(--tiles-listbox-input-color, var(--tiles-listbox-title-color, var(--tiles-default-contents-color)));\n`;
+    style += ` --tiles-default-listbox-itens-size: var(--tiles-listbox-input-size, var(--paper-input-container-shared-input-style_-_font-size, var(--tiles-default-titles-size)));\n`;
+    style += ` --tiles-default-listbox-itens-transform: var(--tiles-listbox-input-transform, var(--tiles-listbox-title-transform, none));\n`;
+
+    return style+"}\n";
+  }
+
+  _getStylesPaperComponent(tilesConfig) {
+    let style = '';
+
+    if(tilesConfig.id && (tilesConfig.column || tilesConfig.column_span || tilesConfig.row || tilesConfig.row_span)){
+      const column = tilesConfig.column ? tilesConfig.column : 'auto';
+      const column_span = tilesConfig.column_span ? tilesConfig.column_span : 1;
+      const row = tilesConfig.row ? tilesConfig.row : 'auto';
+      const row_span = tilesConfig.row_span ? tilesConfig.row_span : 1;
+
+      style += ` --tiles-grid-area: ${row} / ${column} / span ${row_span} / span ${column_span};\n`;
+    }
+
+    if(tilesConfig.label && !this._DOMAIN_INPUT_SELECT.includes(tilesConfig.domain)) computeLabelStyle(tilesConfig, "label");
+    if(tilesConfig.label_sec && !this._DOMAIN_INPUT_SELECT.includes(tilesConfig.domain)) computeLabelStyle(tilesConfig, "label_sec");
+
+    if(tilesConfig.listbox || this._DOMAIN_INPUT_SELECT.includes(tilesConfig.domain)) {
+
+      var listbox = tilesConfig.listbox ? tilesConfig.listbox : tilesConfig;
+
+      if(listbox.title_color) style += ` --tiles-listbox-title-color: ${listbox.title_color};\n`; //for list label
+      if(listbox.title_color) style += ` --paper-font-subhead_-_font-color: ${listbox.title_color};\n`; //for list label
+      if(listbox.title_size) style += ` --paper-font-subhead_-_font-size: ${listbox.title_size};\n`; //for list label
+      if(listbox.title_height) style += ` --tiles-listbox-title-height: ${listbox.title_height};\n`;
+      if(listbox.title_transform) style += ` --tiles-listbox-title-transform: ${listbox.title_transform};\n`;
+
+      if(listbox.input_color) style += ` --tiles-listbox-input-color: ${listbox.input_color};\n`; //for list label
+      if(listbox.input_color) style += ` --paper-font-subhead_-_font-color: ${listbox.input_color};\n`; //for list label
+      if(listbox.input_size) style += ` --paper-input-container-shared-input-style_-_font-size: ${listbox.input_size};\n`; //for list label
+      if(listbox.input_height) style += ` --tiles-listbox-input-height: ${listbox.input_height};\n`;
+      if(listbox.input_transform) style += ` --tiles-listbox-input-transform: ${listbox.input_transform};\n`;
+
+      if(listbox.itens_color) style += ` --tiles-listbox-itens-color: ${listbox.itens_color};\n`; //for list label
+      if(listbox.itens_color) style += ` --paper-font-subhead_-_font-color: ${listbox.itens_color};\n`; //for list label
+      if(listbox.itens_size) style += ` --tiles-listbox-itens-size: ${listbox.itens_size};\n`; //for list label
+      if(listbox.itens_transform) style += ` --tiles-listbox-itens-transform: ${listbox.itens_transform};\n`;
+      if(listbox.list_background) style += ` --tiles-listbox-background-list-color: ${listbox.list_background};\n`;
+
+      if(listbox.padding) style += ` --tiles-dropdownmenu-padding: ${listbox.padding};\n`;
+
+    }
+
+    function computeLabelStyle(config, labelName) {
+      var styleLabel = labelName.replace(/_/g, "-");
+      if(config[labelName].color) computeStatesAttributes(config, labelName, "color");
+      if(config[labelName].size) style += ` --tiles-${styleLabel}-size: ${config[labelName].size};\n`;
+      if(config[labelName].transform) style += ` --tiles-${styleLabel}-transform: ${config[labelName].transform};\n`;
+      if(config[labelName].padding) style += ` --tiles-${styleLabel}-padding: ${config[labelName].padding};\n`;
+      if(config[labelName].font) style += ` --tiles-${styleLabel}-font: ${config[labelName].font};\n`;
+      if(config[labelName].decoration) style += ` --tiles-${styleLabel}-decoration: ${config[labelName].decoration};\n`;
+    }
 
     if(tilesConfig.background) {
-      var background = tilesConfig.background;
-      if(typeof(tilesConfig.background) == "string") background = {value: tilesConfig.background};
-      
-      if(background.value) style.setProperty(value+"background", background.value);
-      if(background.value && background.value.indexOf("url(") < 0) style.setProperty(value+"list-color",background.value);
-      if(background.value_on) style.setProperty(value+"background-on", background.value_on);
-      if(background.value_off) style.setProperty(value+"background-off", background.value_off);
-      if(background.image_size) style.setProperty(value+"image-size", background.image_size);
-    }
-
-    if(tilesConfig.label) {
-      if(tilesConfig.label.color) style.setProperty(value+"label-color", tilesConfig.label.color);
-      if(tilesConfig.label.color_on) style.setProperty(value+"label-color-on", tilesConfig.label.color_on);
-      if(tilesConfig.label.color_off) style.setProperty(value+"label-color-off", tilesConfig.label.color_off);
-      if(tilesConfig.label.size) style.setProperty(value+"label-size", tilesConfig.label.size);
-      if(tilesConfig.label.transform) style.setProperty(value+"label-transform", tilesConfig.label.transform);
-      if(tilesConfig.label.padding) style.setProperty(value+"label-padding", tilesConfig.label.padding);
-      if(tilesConfig.label.size && this._DOMAIN_LIST.includes(tilesConfig.domain)) 
-        style.setProperty("--paper-font-subhead_-_font-size", tilesConfig.label.size);
-    }
-
-    if(tilesConfig.label_sec) {
-      if(tilesConfig.label_sec.color) style.setProperty(value+"label-sec-color", tilesConfig.label_sec.color);
-      if(tilesConfig.label_sec.color_on) style.setProperty(value+"label-sec-color-on", tilesConfig.label_sec.color_on);
-      if(tilesConfig.label_sec.color_off) style.setProperty(value+"label-sec-color-off", tilesConfig.label_sec.color_off);
-      if(tilesConfig.label_sec.size) style.setProperty(value+"label-sec-size", tilesConfig.label_sec.size);
-      if(tilesConfig.label_sec.transform) style.setProperty(value+"label-sec-transform", tilesConfig.label_sec.transform);
-      if(tilesConfig.label_sec.padding) style.setProperty(value+"label-sec-padding", tilesConfig.label_sec.padding);
-      if(tilesConfig.label_sec.size && this._DOMAIN_LIST.includes(tilesConfig.domain)) 
-        style.setProperty("--paper-input-container-shared-input-style_-_font-size", tilesConfig.label_sec.size);
+      computeStatesAttributes(tilesConfig, "background");
+      if(tilesConfig.background.image_size) style += ` --tiles-image-size: ${tilesConfig.background.image_size};\n`;
     }
 
     if(tilesConfig.icon) {
-      if(tilesConfig.icon.color) style.setProperty(value+"icon-color", tilesConfig.icon.color);
-      if(tilesConfig.icon.color_on) style.setProperty(value+"icon-color-on", tilesConfig.icon.color_on);
-      if(tilesConfig.icon.color_off) style.setProperty(value+"icon-color-off", tilesConfig.icon.color_off);
-      if(tilesConfig.icon.size) style.setProperty(value+"icon-size", tilesConfig.icon.size);
-      if(tilesConfig.icon.padding) style.setProperty(value+"icon-padding", tilesConfig.icon.padding);
+      if(tilesConfig.icon.color) computeStatesAttributes(tilesConfig, "icon", "color");
+      if(tilesConfig.icon.size) style += ` --tiles-icon-size: ${tilesConfig.icon.size};\n`;
+      if(tilesConfig.icon.padding) style += ` --tiles-icon-padding: ${tilesConfig.icon.padding};\n`;
     }
 
     if(tilesConfig.border) {
-      if(tilesConfig.border.size) style.setProperty(value+"border-size", tilesConfig.border.size);
-      if(tilesConfig.border.color) style.setProperty(value+"border-color", tilesConfig.border.color);
-      if(tilesConfig.border.radius) style.setProperty(value+"border-radius", tilesConfig.border.radius);
-    }
-
-    if(tilesConfig.opacity) {
-      if(tilesConfig.opacity.value) style.setProperty(value+"opacity", tilesConfig.opacity.value);
-      if(tilesConfig.opacity.value_on) style.setProperty(value+"opacity-on", tilesConfig.opacity.value_on);
-      if(tilesConfig.opacity.value_off) style.setProperty(value+"opacity-off", tilesConfig.opacity.value_off);
-      if(tilesConfig.opacity.value_disabled) style.setProperty(value+"opacity-disabled", tilesConfig.opacity.value_disabled);
+      if(typeof(tilesConfig.border) == "string") tilesConfig.border = {size: tilesConfig.border};
+      if(tilesConfig.border.color) computeStatesAttributes(tilesConfig, "border", "color");
+      if(tilesConfig.border.size) style += ` --tiles-border-size: ${tilesConfig.border.size};\n`;
+      if(tilesConfig.border.radius) style += ` --tiles-border-radius: ${tilesConfig.border.radius};\n`;
+      if(tilesConfig.border.style) style += ` --tiles-border-style: ${tilesConfig.border.style};\n`;
     }
 
     if(tilesConfig.orientation) {
-      if(tilesConfig.orientation == "horizontal") style.setProperty(value+"orientation", "row");
-      if(tilesConfig.orientation == "vertical") style.setProperty(value+"orientation", "column"); //default
+      if(tilesConfig.orientation == "horizontal") style += ` --tiles-orientation: row;\n`;
+      if(tilesConfig.orientation == "vertical") style += ` --tiles-orientation: column;\n`; //default
+    }
+
+    function computeStatesAttributes(config, attributeName, subAttribute) {
+      var styleLabel = attributeName.replace(/_/g, "-");
+      var attribute = subAttribute ? config[attributeName][subAttribute] : config[attributeName];
+      if(typeof(attribute) != "object") {
+        attribute = {value: attribute};
+        if(subAttribute) config[attributeName][subAttribute] = attribute;
+        else config[attributeName] = attribute;
+      } 
+      subAttribute = subAttribute ? "-"+subAttribute : "";
+      if(attribute.value != undefined) style += ` --tiles-${styleLabel+subAttribute}: ${attribute.value};\n`;
+      if(attribute.value_on != undefined) style += ` --tiles-${styleLabel+subAttribute}-on: ${attribute.value_on};\n`;
+      if(attribute.value_off != undefined) style += ` --tiles-${styleLabel+subAttribute}-off: ${attribute.value_off};\n`;
+      if(attribute.value_disabled != undefined) style += ` --tiles-${styleLabel+subAttribute}-disabled: ${attribute.value_disabled};\n`;
     }
 
     if(tilesConfig.align) {
       if(tilesConfig.orientation == "horizontal") {
-        if(tilesConfig.align.indexOf("left") >= 0) style.setProperty(value+"horizontal-align", "flex-start");
-        if(tilesConfig.align.indexOf("right") >= 0) style.setProperty(value+"horizontal-align", "flex-end");
-        if(tilesConfig.align.indexOf("top") >= 0) style.setProperty(value+"vertical-align", "flex-start");
-        if(tilesConfig.align.indexOf("bottom") >= 0) style.setProperty(value+"vertical-align", "flex-end");
-        if(tilesConfig.align.indexOf("middle") >= 0) style.setProperty(value+"vertical-align", "center");
-        if(tilesConfig.align.indexOf("center") >= 0) style.setProperty(value+"horizontal-align", "center");
+        if(tilesConfig.align.indexOf("left") >= 0) style += ` --tiles-horizontal-align: flex-start;\n`;
+        if(tilesConfig.align.indexOf("right") >= 0) style += ` --tiles-horizontal-align: flex-end;\n`;
+        if(tilesConfig.align.indexOf("top") >= 0) style += ` --tiles-vertical-align: flex-start;\n`;
+        if(tilesConfig.align.indexOf("bottom") >= 0) style += ` --tiles-vertical-align: flex-end;\n`;
+        if(tilesConfig.align.indexOf("middle") >= 0) style += ` --tiles-vertical-align: center;\n`;
+        if(tilesConfig.align.indexOf("center") >= 0) style += ` --tiles-horizontal-align: center;\n`;
       } else {
-        if(tilesConfig.align.indexOf("left") >= 0) style.setProperty(value+"vertical-align", "flex-start");
-        if(tilesConfig.align.indexOf("right") >= 0) style.setProperty(value+"vertical-align", "flex-end");
-        if(tilesConfig.align.indexOf("top") >= 0) style.setProperty(value+"horizontal-align", "flex-start");
-        if(tilesConfig.align.indexOf("bottom") >= 0) style.setProperty(value+"horizontal-align", "flex-end");
-        if(tilesConfig.align.indexOf("center") >= 0) style.setProperty(value+"vertical-align", "center");
-        if(tilesConfig.align.indexOf("middle") >= 0) style.setProperty(value+"horizontal-align", "center");
+        if(tilesConfig.align.indexOf("left") >= 0) style += ` --tiles-vertical-align: flex-start;\n`;
+        if(tilesConfig.align.indexOf("right") >= 0) style += ` --tiles-vertical-align: flex-end;\n`;
+        if(tilesConfig.align.indexOf("top") >= 0) style += ` --tiles-horizontal-align: flex-start;\n`;
+        if(tilesConfig.align.indexOf("bottom") >= 0) style += ` --tiles-horizontal-align: flex-end;\n`;
+        if(tilesConfig.align.indexOf("center") >= 0) style += ` --tiles-vertical-align: center;\n`;
+        if(tilesConfig.align.indexOf("middle") >= 0) style += ` --tiles-horizontal-align: center;\n`;
       }
     }
 
     if(tilesConfig.display) {
-      if(tilesConfig.display == "none") style.setProperty(value+"display", "none");
-      if(tilesConfig.display == "hidden") style.setProperty(value+"visibility", "hidden");
+      if(tilesConfig.display == "none") style += ` --tiles-display: none;\n`;
+      if(tilesConfig.display == "hidden") style += ` --tiles-visibility: hidden;\n`;
     }
     
-    if(tilesConfig.padding) style.setProperty(value+"padding", tilesConfig.padding);
+    if(tilesConfig.opacity != undefined) {
+      computeStatesAttributes(tilesConfig, "opacity");
+    }
     
-    if(tilesConfig.text_align_legacy) style.setProperty(value+"text-align-legacy", tilesConfig.text_align_legacy);
+    if(tilesConfig.grayscale != undefined) {
+      computeStatesAttributes(tilesConfig, "grayscale");
+    }
+    
+    if(tilesConfig.padding) style += ` --tiles-padding: ${tilesConfig.padding};\n`;
+    
+    if(tilesConfig.shadow) {
+      var shadow = tilesConfig.shadow;
+      if((tilesConfig.shadow.indexOf("elevation:") >= 0)) {
+        shadow = shadow.split(":")[1];
+        style += ` --tiles-box-shadow: var(--shadow-elevation-${shadow.trim()}_-_box-shadow);\n`;
+      } else {
+        style += ` --tiles-box-shadow: ${shadow};\n`;
+      }
+      
+    } 
+
+    if(tilesConfig.text_align_legacy) style += ` --tiles-text-align-legacy: ${tilesConfig.text_align_legacy};\n`;
+
+    if(style) style = (tilesConfig.id ? `\n#${tilesConfig.id} {\n` : '\n:host {\n/*COMMON SETTINGS VALUES*/\n')+style+"}\n";
+
+    return style;
   }
 
   _computeCardStylesFromTemplate(card, cardConfig){
@@ -412,6 +596,7 @@ class TilesCard extends HTMLElement {
       if(display == "hidden") card.style.setProperty("--tiles-card-visibility", "hidden");
     }
     if(cardConfig.templates.background) card.style.setProperty("--tiles-card-background", this._getValueFromTemplate(cardConfig, "background"));
+    if(cardConfig.templates.theme) this._setCardTheme(this._getValueFromTemplate(cardConfig, "theme"), card);
     if(cardConfig.templates.style) card.style.cssText += this._getValueFromTemplate(cardConfig, "style");
   }
 
@@ -422,16 +607,23 @@ class TilesCard extends HTMLElement {
     if(entity.templates.label_transform) paperComponent.style.setProperty("--tiles-label-transform", this._getValueFromTemplate(entity, "label_transform"));
     if(entity.templates.label_sec_color) paperComponent.style.setProperty("--tiles-label-sec-color", this._getValueFromTemplate(entity, "label_sec_color"));
     if(entity.templates.label_sec_transform) paperComponent.style.setProperty("--tiles-label-sec-transform", this._getValueFromTemplate(entity, "label_sec_transform"));
-    if(entity.templates.icon_color) paperComponent.style.setProperty("--tiles-icon-color", this._getValueFromTemplate(entity, "color_color"));
+    if(entity.templates.icon_color) paperComponent.style.setProperty("--tiles-icon-color", this._getValueFromTemplate(entity, "icon_color"));
+    if(entity.templates.border_color) paperComponent.style.setProperty("--tiles-border-color", this._getValueFromTemplate(entity, "border_color"));
     if(entity.templates.display) {
       var display = this._getValueFromTemplate(entity, "display");
       paperComponent.style.removeProperty("--tiles-visibility");
       paperComponent.style.removeProperty("--tiles-display");
-      paperComponent.disable(false);
       if(display == "none") paperComponent.style.setProperty("--tiles-display", "none");
       if(display == "hidden") paperComponent.style.setProperty("--tiles-visibility", "hidden");
-      if(display == "disabled") paperComponent.disable(true);
     }
+    if(entity.templates.disable) entity.disable = this._getValueFromTemplate(entity, "disable");
+    if(entity.templates.opacity) paperComponent.style.setProperty("--tiles-opacity", this._getValueFromTemplate(entity, "opacity"));
+    if(entity.templates.grayscale) paperComponent.style.setProperty("--tiles-grayscale", this._getValueFromTemplate(entity, "grayscale"));
+
+    if(entity.templates.title_color) paperComponent.style.setProperty("--tiles-listbox-title-color", this._getValueFromTemplate(entity, "title_color"));
+    if(entity.templates.input_color) paperComponent.style.setProperty("--tiles-listbox-input-color", this._getValueFromTemplate(entity, "input_color"));
+    if(entity.templates.itens_color) paperComponent.style.setProperty("--tiles-listbox-itens-color", this._getValueFromTemplate(entity, "itens_color"));
+
     if(entity.templates.style) paperComponent.style.cssText += this._getValueFromTemplate(entity, "style");
   }
 
@@ -476,10 +668,11 @@ class TilesCard extends HTMLElement {
   }
 
   _getIconValue(entity) {
-    var iconValue = "";
+    var iconValue = entity.oldIcon;
     if(entity.icon && entity.icon.value) iconValue = entity.icon.value;
     if(entity.icon && entity.icon.value_on && entity.className == "on") iconValue = entity.icon.value_on;
     if(entity.icon && entity.icon.value_off && entity.className == "off") iconValue = entity.icon.value_off;
+    if(entity.icon && entity.icon.value_disabled && entity.className == "disabled") iconValue = entity.icon.value_disabled;
     if(entity.templates && entity.templates.icon) iconValue = this._getValueFromTemplate(entity, "icon");
 
     return iconValue;
@@ -490,6 +683,8 @@ class TilesCard extends HTMLElement {
     if(entity.templates && entity.templates.class_name) {
       return this._getValueFromTemplate(entity, "class_name");
     } else if(!entityId || this._DOMAIN_NO_ONOFF.includes(entityId.split('.')[0])) {
+      return '';
+    } else if(!entityId || this._DOMAIN_INPUT_SELECT.includes(entityId.split('.')[0])) {
       return '';
     } else {
       return this.myHass.states[entityId] && this._ON_STATES.includes(this.myHass.states[entityId].state) ? 'on' : 'off';
@@ -564,13 +759,11 @@ class TilesCard extends HTMLElement {
     newConfig.card_settings = {};
     newConfig.common_settings = {};
     newConfig.common_settings.background = {};
-    newConfig.common_settings.label = {};
-    newConfig.common_settings.label_sec = {};
-    newConfig.common_settings.icon = {};
+    newConfig.common_settings.label = {color: {}};
+    newConfig.common_settings.label_sec = {color: {}};
+    newConfig.common_settings.icon = {color: {}};
+    newConfig.common_settings.legacy_config = true;
     newConfig.legacy_config = true;
-    
-    newConfig.common_settings.padding = "8.4px 6.85px";
-    newConfig.common_settings.background.image_size = "none";
     newConfig.entities = [];
 
     if(config.title) newConfig.card_settings.title = config.title;
@@ -580,22 +773,31 @@ class TilesCard extends HTMLElement {
     if(config.gap) newConfig.card_settings.gap = config.gap;
 
     if(config.text_align) newConfig.common_settings.text_align_legacy = config.text_align;
-    if(config.text_uppercase == false) newConfig.common_settings.label.transform = "none";
+    if(config.text_uppercase === false) newConfig.common_settings.label.transform = "none";
 
     if(config.color) newConfig.common_settings.background.value = config.color;
     if(config.color_on) newConfig.common_settings.background.value_on = config.color_on;
     if(config.color_off) newConfig.common_settings.background.value_off = config.color_off;
 
     if(config.label) newConfig.common_settings.label.value = config.label;
-    if(config.text_color) newConfig.common_settings.label.color = config.text_color;
-    if(config.text_color_on) newConfig.common_settings.label.color_on = config.text_color_on;
-    if(config.text_color_off) newConfig.common_settings.label.color_off = config.text_color_off;
+    if(config.text_color) {
+      newConfig.common_settings.label.color.value = config.text_color;
+      newConfig.common_settings.icon.color.value = config.text_color;
+    } 
+    if(config.text_color_on) {
+      newConfig.common_settings.label.color.value_on = config.text_color_on;
+      newConfig.common_settings.icon.color.value_on = config.text_color_on;
+    } 
+    if(config.text_color_off) {
+      newConfig.common_settings.label.color.value_off = config.text_color_off;
+      newConfig.common_settings.icon.color.value_off = config.text_color_off;
+    } 
     if(config.text_size) newConfig.common_settings.label.size = config.text_size;
 
     if(config.label_sec) newConfig.common_settings.label_sec.value = config.label_sec;
-    if(config.text_sec_color) newConfig.common_settings.label_sec.color = config.text_sec_color;
-    if(config.text_sec_color_on) newConfig.common_settings.label_sec.color_on = config. text_sec_color_on;
-    if(config.text_sec_color_off) newConfig.common_settings.label_sec.color_off = config.text_sec_color_off;
+    if(config.text_sec_color) newConfig.common_settings.label_sec.color.value = config.text_sec_color;
+    if(config.text_sec_color_on) newConfig.common_settings.label_sec.color.value_on = config. text_sec_color_on;
+    if(config.text_sec_color_off) newConfig.common_settings.label_sec.color.value_off = config.text_sec_color_off;
     if(config.text_sec_size) newConfig.common_settings.label_sec.size = config.text_sec_size;
 
     if(config.icon_size) newConfig.common_settings.icon.size = config.icon_size;
@@ -604,16 +806,16 @@ class TilesCard extends HTMLElement {
 
       var newEntity = {};
       newEntity.background = {};
-      newEntity.label = {};
-      newEntity.label_sec = {};
-      newEntity.icon = {};
+      newEntity.label = {color: {}};
+      newEntity.label_sec = {color: {}};
+      newEntity.icon = {color: {}};
       newEntity.templates = {};
 
       if(entity.column) newEntity.column = entity.column;
       if(entity.column_span) newEntity.column_span = entity.column_span;
       if(entity.row) newEntity.row = entity.row;
       if(entity.row_span) newEntity.row_span = entity.row_span;
-      if(entity.text_uppercase == false) newEntity.label.transform = "none";
+      if(entity.text_uppercase === false) newEntity.label.transform = "none";
 
       if(entity.entity) newEntity.entity = entity.entity;
       if(entity.service) newEntity.service = entity.service;
@@ -627,16 +829,25 @@ class TilesCard extends HTMLElement {
   
       if(entity.label) newEntity.label.value = entity.label;
       if(entity.label_state) newEntity.label.state = entity.label_state;
-      if(entity.text_color) newEntity.label.color = entity.text_color;
-      if(entity.text_color_on) newEntity.label.color_on = entity.text_color_on;
-      if(entity.text_color_off) newEntity.label.color_off = entity.text_color_off;
+      if(entity.text_color) {
+        newEntity.common_settings.label.color.value = entity.text_color;
+        newEntity.common_settings.icon.color.value = entity.text_color;
+      } 
+      if(entity.text_color_on) {
+        newEntity.common_settings.label.color.value_on = entity.text_color_on;
+        newEntity.common_settings.icon.color.value_on = entity.text_color_on;
+      } 
+      if(entity.text_color_off) {
+        newEntity.common_settings.label.color.value_off = entity.text_color_off;
+        newEntity.common_settings.icon.color.value_off = entity.text_color_off;
+      } 
       if(entity.text_size) newEntity.label.size = entity.text_size;
   
       if(entity.label_sec) newEntity.label_sec.value = entity.label_sec;
       if(entity.label_sec_state) newEntity.label_sec.state = entity.label_sec_state;
-      if(entity.text_sec_color) newEntity.label_sec.color = entity.text_sec_color;
-      if(entity.text_sec_color_on) newEntity.label_sec.color_on = entity. text_sec_color_on;
-      if(entity.text_sec_color_off) newEntity.label_sec.color_off = entity.text_sec_color_off;
+      if(entity.text_sec_color) newEntity.label_sec.color.value = entity.text_sec_color;
+      if(entity.text_sec_color_on) newEntity.label_sec.color.value_on = entity. text_sec_color_on;
+      if(entity.text_sec_color_off) newEntity.label_sec.color.value_off = entity.text_sec_color_off;
       if(entity.text_sec_size) newEntity.label_sec.size = entity.text_sec_size;
       
       if(entity.icon) newEntity.icon.value = entity.icon;
@@ -659,188 +870,206 @@ class TilesCard extends HTMLElement {
     return newConfig;
   }
 
-  _getGlobalStyle() {
+  _getCardStyle() {
     return `
       ha-card {
-          display: var(--tiles-card-display, block);
-          visibility: var(--tiles-card-visibility, visible);
-          color: var(--tiles-card-title-color, var(--primary-text-color));
-          text-align: var(--tiles-card-title-align, left);
-          background: var(--tiles-card-background, var(--paper-card-background-color));
-          background-size: cover;
-          background-repeat: no-repeat;
-      
-          /* DEFAULT VALUES */
-          --tiles-default-card-columns: 3;
-          --tiles-default-card-column-width: 1fr;
-          --tiles-default-card-row-height: 1fr;
-          --tiles-default-card-gap: 5px;
-          --tiles-default-card-padding: 16px;
-          --tiles-default-border-size: 0px;
-          --tiles-default-border-radius: 3px;
-          --tiles-default-icon-size: 24px;
-          --tiles-default-icon-padding: 5px;
-          --tiles-default-labels-size: 1em;
-          --tiles-default-labels-padding: 0px;
-          --tiles-default-opacity: 1;
-          --tiles-default-opacity-disabled: 0.5;
-          --tiles-default-padding: 0px;
-          --tiles-default-paperlistbox-padding: 0px;
-          --tiles-default-dropdownmenu-padding: 0px 5px;
-          --tiles-default-contents-color: white;
+          display: var(--tiles-card-display, var(--tiles-default-card-display));
+          visibility: var(--tiles-card-visibility, var(--tiles-default-card-visibility));
+          color: var(--tiles-card-title-color, var(--tiles-default-card-title-color));
+          text-align: var(--tiles-card-title-align, var(--tiles-default-card-title-align));
+          background: var(--tiles-card-background, var(--tiles-default-card-background));
+          background-size: var(--tiles-default-card-background-size);
+          background-repeat: var(--tiles-default-card-background-repeat);
       }
       
       .grid {
-          display: grid;
+          display: var(--tiles-default-card-grid-display);
           grid-template-columns: repeat(var(--tiles-card-columns, var(--tiles-default-card-columns)), var(--tiles-card-column-width, var(--tiles-default-card-column-width)));
           grid-auto-rows: var(--tiles-card-row-height, var(--tiles-default-card-row-height));
           grid-gap: var(--tiles-card-gap, var(--tiles-default-card-gap));
           padding: var(--tiles-card-padding, var(--tiles-default-card-padding));
           padding-top: var(--tiles-card-padding-top, var(--tiles-card-padding, var(--tiles-default-card-padding)));
-          justify-content: var(--tiles-card-align, start);
+          justify-content: var(--tiles-card-align, var(--tiles-default-card-align));
       }
       
-      div.paperListbox {
-          display: var(--tiles-display, var(--tiles-common-display, flex));
-          visibility: var(--tiles-visibility, var(--tiles-common-visibility, visible));
-          background: var(--tiles-background, var(--tiles-common-background, var(--primary-color)));
-          height: 100%;
-          width: 100%;
-          flex-direction: var(--tiles-orientation, var(--tiles-common-orientation, row));
-          align-items: var(--tiles-vertical-align, var(--tiles-common-vertical-align, center));
-          justify-content: var(--tiles-horizontal-align, var(--tiles-common-horizontal-align, center));
-          opacity: var(--tiles-opacity, var(--tiles-common-opacity, var(--tiles-default-opacity)));
-          border-style: solid;
-          border-width: var(--tiles-border-size, var(--tiles-common-border-size, var(--tiles-default-border-size)));
-          border-color: var(--tiles-border-color, var(--tiles-common-border-color, var(--tiles-default-contents-color)));
-          border-radius: var(--tiles-border-radius, var(--tiles-common-border-radius, var(--tiles-default-border-radius)));
-          padding: var(--tiles-default-paperlistbox-padding);
+      tiles-listbox {
+          /* height: 100%;
+          width: 100%; */
+          grid-area: var(--tiles-grid-area, var(--tiles-default-grid-area));
+          display: var(--tiles-display, var(--tiles-default-display));
+          visibility: var(--tiles-visibility, var(--tiles-default-visibility));
+          background: var(--tiles-background, var(--tiles-default-background));
+          box-shadow: var(--tiles-box-shadow, var(--tiles-default-box-shadow)) !important;
+          margin: var(--tiles-default-margin) !important;
+          min-width: var(--tiles-default-min-width);
+          min-height: var(--tiles-default-min-height);
+          flex-direction: var(--tiles-orientation, var(--tiles-default-listbox-orientation));
+          align-items: var(--tiles-vertical-align, var(--tiles-default-vertical-align));
+          justify-content: var(--tiles-horizontal-align, var(--tiles-default-horizontal-align));
+          opacity: var(--tiles-opacity, var(--tiles-default-opacity));
+          border-style: var(--tiles-border-style, var(--tiles-default-border-style));
+          border-width: var(--tiles-border-size, var(--tiles-default-border-size));
+          border-color: var(--tiles-border-color, var(--tiles-default-contents-color));
+          border-radius: var(--tiles-border-radius, var(--tiles-default-border-radius));
+          padding: var(--tiles-default-listbox-padding);
+          -webkit-filter: grayscale(var(--tiles-grayscale, var(--tiles-default-grayscale))); /* Google Chrome, Safari 6+ & Opera 15+ */
+          filter: grayscale(var(--tiles-grayscale, var(--tiles-default-grayscale))); /* Microsoft Edge and Firefox 35+ */
       }
       
-      div.paperListbox .icon {
-          height: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
-          width: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
-          padding: var(--tiles-icon-padding, var(--tiles-common-icon-padding, var(--tiles-default-icon-padding)));
-          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-common-icon-color, var(--tiles-default-contents-color)));
-          --iron-icon-height: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
-          --iron-icon-width: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
+      tiles-listbox .icon {
+          height: var(--tiles-icon-size, var(--tiles-default-icon-size));
+          width: var(--tiles-icon-size, var(--tiles-default-icon-size));
+          padding: var(--tiles-icon-padding, var(--tiles-default-icon-padding));
+          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-default-contents-color));
+          --iron-icon-height: var(--tiles-icon-size, var(--tiles-default-icon-size));
+          --iron-icon-width: var(--tiles-icon-size, var(--tiles-default-icon-size));
       }
       
-      div.paperListbox.disabled {
-          opacity: var(--tiles-opacity-disabled, var(--tiles-common-opacity-disabled, var(--tiles-default-opacity-disabled)));
+      tiles-listbox.disabled {
+          background: var(--tiles-background-disabled, var(--tiles-default-background-disabled));
+          opacity: var(--tiles-opacity-disabled, var(--tiles-default-opacity-disabled));
+          border-color: var(--tiles-border-color-disabled, var(--tiles-default-border-color-disabled));
+      
+          -webkit-filter: grayscale(var(--tiles-grayscale-disabled, var(--tiles-default-grayscale-disabled))); /* Google Chrome, Safari 6+ & Opera 15+ */
+          filter: grayscale(var(--tiles-grayscale-disabled, var(--tiles-default-grayscale-disabled))); /* Microsoft Edge and Firefox 35+ */
       }
       
-      paper-dropdown-menu {
-          width: 100%;
-          padding: var(--tiles-dropdownMenu-padding, var(--tiles-default-dropdownmenu-padding)); /* top|right|bottom|left */
-          text-transform: var(--tiles-label-transform, var(--tiles-common-label-transform, none));
+      tiles-listbox paper-dropdown-menu {
+          width: var(--tiles-default-dropdownmenu-width);
+          padding: var(--tiles-dropdownmenu-padding, var(--tiles-default-dropdownmenu-padding)); /* top|right|bottom|left */
+          text-transform: var(--tiles-listbox-title-transform, var(--tiles-default-listbox-title-transform));
       
-          --paper-input-container-color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
-          --iron-icon-fill-color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
-          --paper-listbox-background-color: var(--tiles-list-color, var(--tiles-common-list-color, var(--primary-color)));
-          --paper-listbox-color: var(--tiles-label-sec-color, var(--tiles-common-label_sec-color, var(--tiles-default-contents-color)));
-          --paper-input-container-focus-color: var(--tiles-list-color, var(--tiles-common-list-color, var(--primary-color)));
+          --paper-input-container-color: var(--tiles-listbox-title-color, var(--tiles-default-listbox-title-color));
+          --iron-icon-fill-color: var(--tiles-listbox-title-color, var(--tiles-default-listbox-title-color));
+          --paper-listbox-background-color: var(--tiles-listbox-background-list-color, var(--tiles-default-listbox-background-list-color));
+          --paper-listbox-color: var(--tiles-listbox-itens-color, var(--tiles-default-listbox-itens-color));
+          --paper-input-container-focus-color: var(--tiles-background, var(--tiles-default-background));
       }
       
-      paper-item {
-          font-size: var(--tiles-label-sec-size, var(--tiles-common-label_sec-size, var(--paper-input-container-shared-input-style_-_font-size, var(--tiles-default-labels-size))));
-          text-transform: var(--tiles-label-sec-transform, var(--tiles-common-label_sec-transform, none));
+      tiles-listbox paper-item {
+          font-size: var(--tiles-listbox-itens-size, var(--tiles-default-listbox-itens-size));
+          text-transform: var(--tiles-listbox-itens-transform, var(--tiles-default-listbox-itens-transform));
       }
       
       paper-button {
-          display: var(--tiles-display, var(--tiles-common-display, flex));
-          visibility: var(--tiles-visibility, var(--tiles-common-visibility, visible));
           height: 100%;
           width: 100%;
-          box-shadow: none !important;
-          margin: 0 !important;
-          min-width: 10px;
-          min-height: 10px;
-          flex-direction: var(--tiles-orientation, var(--tiles-common-orientation, column));
-          align-items: var(--tiles-vertical-align, var(--tiles-common-vertical-align, center));
-          justify-content: var(--tiles-horizontal-align, var(--tiles-common-horizontal-align, center));
-          background: var(--tiles-background, var(--tiles-common-background, var(--primary-color)));
-          background-size: var(--tiles-image-size, var(--tiles-common-image-size, contain));
+          grid-area: var(--tiles-grid-area, var(--tiles-default-grid-area));
+          display: var(--tiles-display, var(--tiles-default-display));
+          visibility: var(--tiles-visibility, var(--tiles-default-visibility));
+          background: var(--tiles-background, var(--tiles-default-background));
+          background-size: var(--tiles-image-size, var(--tiles-default-image-size));
           background-repeat: no-repeat;
           background-position: 50% 50%;
-          opacity: var(--tiles-opacity, var(--tiles-common-opacity, --tiles-default-opacity));
-          color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
-          font-size: var(--tiles-label-size, var(--tiles-common-label-size, var(--tiles-default-labels-size)));
-          border-style: solid;
-          border-width: var(--tiles-border-size, var(--tiles-common-border-size, var(--tiles-default-border-size)));
-          border-color: var(--tiles-border-color, var(--tiles-common-border-color, var(--tiles-default-contents-color)));
-          border-radius: var(--tiles-border-radius, var(--tiles-common-border-radius, var(--tiles-default-border-radius)));
-          padding: var(--tiles-padding, var(--tiles-common-padding, var(--tiles-default-padding)));
+          box-shadow: var(--tiles-box-shadow, var(--tiles-default-box-shadow)) !important;
+          margin: var(--tiles-default-margin) !important;
+          min-width: var(--tiles-default-min-width);
+          min-height: var(--tiles-default-min-height);
+          flex-direction: var(--tiles-orientation, var(--tiles-default-orientation));
+          align-items: var(--tiles-vertical-align, var(--tiles-default-vertical-align));
+          justify-content: var(--tiles-horizontal-align, var(--tiles-default-horizontal-align));
+          opacity: var(--tiles-opacity, --tiles-default-opacity);
+          border-style: var(--tiles-border-style, var(--tiles-default-border-style));
+          border-width: var(--tiles-border-size, var(--tiles-default-border-size));
+          border-color: var(--tiles-border-color, var(--tiles-default-contents-color));
+          border-radius: var(--tiles-border-radius, var(--tiles-default-border-radius));
+          padding: var(--tiles-padding, var(--tiles-default-padding));
+          color: var(--tiles-label-color, var(--tiles-default-contents-color));
+          font-size: var(--tiles-label-size, var(--tiles-default-labels-size));
+          -webkit-filter: grayscale(var(--tiles-grayscale, var(--tiles-default-grayscale))); /* Google Chrome, Safari 6+ & Opera 15+ */
+          filter: grayscale(var(--tiles-grayscale, var(--tiles-default-grayscale))); /* Microsoft Edge and Firefox 35+ */
       
-          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-common-icon-color, var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
-          --iron-icon-height: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
-          --iron-icon-width: var(--tiles-icon-size, var(--tiles-common-icon-size, var(--tiles-default-icon-size)));
+          --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-label-color, var(--tiles-default-contents-color)));
+          --iron-icon-height: var(--tiles-icon-size, var(--tiles-default-icon-size));
+          --iron-icon-width: var(--tiles-icon-size, var(--tiles-default-icon-size));
       }
       
       paper-button.on {
-          background: var(--tiles-background-on, var(--tiles-background, var(--tiles-common-background-on, var(--tiles-common-background, var(--google-green-500)))));
+          background: var(--tiles-background-on, var(--tiles-background, var(--google-green-500)));
           background-repeat: no-repeat;
           background-position: 50% 50%;
-          background-size: var(--tiles-image-size,  var(--tiles-common-image-size, contain));
-          opacity: var(--tiles-opacity-on, var(--tiles-opacity, var(--tiles-common-opacity-on, var(--tiles-common-opacity, --tiles-default-opacity))));
-          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-common-label-color-on, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
+          background-size: var(--tiles-image-size,  var(--tiles-default-image-size));
+          opacity: var(--tiles-opacity-on, var(--tiles-opacity, --tiles-default-opacity));
+          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-default-contents-color)));
+          border-color: var(--tiles-border-color-on, var(--tiles-border-color, var(--tiles-default-contents-color)));
           /* --iron-icon-stroke-color: 	Stroke color of the svg icon */
-          --iron-icon-fill-color: var(--tiles-icon-color-on, var(--tiles-icon-color, var(--tiles-common-icon-color-on, var(--tiles-common-icon-color, var(--tiles-default-contents-color)))));
+          --iron-icon-fill-color: var(--tiles-icon-color-on, var(--tiles-icon-color, var(--tiles-default-contents-color)));
+      
+          -webkit-filter: grayscale(var(--tiles-grayscale-on, var(--tiles-grayscale, var(--tiles-default-grayscale)))); /* Google Chrome, Safari 6+ & Opera 15+ */
+          filter: grayscale(var(--tiles-grayscale-on, var(--tiles-grayscale, var(--tiles-default-grayscale)))); /* Microsoft Edge and Firefox 35+ */
       }
       
       paper-button.off {
-          background: var(--tiles-background-off, var(--tiles-background, var(--tiles-common-background-off, var(--tiles-common-background, var(--google-red-500)))));
+          background: var(--tiles-background-off, var(--tiles-background, var(--google-red-500)));
           background-repeat: no-repeat;
           background-position: 50% 50%;
-          background-size: var(--tiles-image-size,  var(--tiles-common-image-size, contain));
-          opacity: var(--tiles-opacity-off, var(--tiles-opacity, var(--tiles-common-opacity-off, var(--tiles-common-opacity, --tiles-default-opacity))));
-          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-common-label-color-off, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
+          background-size: var(--tiles-image-size,  var(--tiles-default-image-size));
+          opacity: var(--tiles-opacity-off, var(--tiles-opacity, --tiles-default-opacity));
+          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-default-contents-color)));
+          border-color: var(--tiles-border-color-off, var(--tiles-border-color, var(--tiles-default-contents-color)));
           /* --iron-icon-stroke-color: 	Stroke color of the svg icon */
-          --iron-icon-fill-color: var(--tiles-icon-color-off, var(--tiles-icon-color, var(--tiles-common-icon-color-off, var(--tiles-common-icon-color, var(--tiles-default-contents-color)))));
+          --iron-icon-fill-color: var(--tiles-icon-color-off, var(--tiles-icon-color, var(--tiles-default-contents-color)));
+      
+          -webkit-filter: grayscale(var(--tiles-grayscale-off, var(--tiles-grayscale, var(--tiles-default-grayscale)))); /* Google Chrome, Safari 6+ & Opera 15+ */
+          filter: grayscale(var(--tiles-grayscale-off, var(--tiles-grayscale, var(--tiles-default-grayscale)))); /* Microsoft Edge and Firefox 35+ */
+      
+      }
+      
+      paper-button.disabled {
+          background: var(--tiles-background-disabled, var(--tiles-background, var(--primary-color)));
+          background-repeat: no-repeat;
+          background-position: 50% 50%;
+          background-size: var(--tiles-image-size,  var(--tiles-default-image-size));
+          opacity: var(--tiles-opacity-disabled, var(--tiles-opacity, --tiles-default-opacity));
+          color: var(--tiles-label-color-disabled, var(--tiles-label-color, var(--tiles-default-contents-color)));
+          border-color: var(--tiles-border-color-disabled, var(--tiles-border-color, var(--tiles-default-contents-color)));
+          /* --iron-icon-stroke-color: 	Stroke color of the svg icon */
+          --iron-icon-fill-color: var(--tiles-icon-color-disabled, var(--tiles-icon-color, var(--tiles-default-contents-color)));
+      
+          -webkit-filter: grayscale(var(--tiles-grayscale-disabled, var(--tiles-grayscale, var(--tiles-default-grayscale-disabled)))); /* Google Chrome, Safari 6+ & Opera 15+ */
+          filter: grayscale(var(--tiles-grayscale-disabled, var(--tiles-grayscale, var(--tiles-default-grayscale-disabled)))); /* Microsoft Edge and Firefox 35+ */
       }
       
       paper-button .icon {
-          padding: var(--tiles-icon-padding, var(--tiles-common-icon-padding, var(--tiles-default-icon-padding)));
+          padding: var(--tiles-icon-padding, var(--tiles-default-icon-padding));
       }
       
       paper-button .label {
-          color: var(--tiles-label-color, var(--tiles-common-label-color, var(--tiles-default-contents-color)));
-          font-size: var(--tiles-label-size, var(--tiles-common-label-size, var(--tiles-default-labels-size)));
-          text-transform: var(--tiles-label-transform, var(--tiles-common-label-transform, none));
-          padding: var(--tiles-label-padding, var(--tiles-common-label-padding, var(--tiles-default-labels-padding)));
+          color: var(--tiles-label-color, var(--tiles-default-contents-color));
+          font-size: var(--tiles-label-size, var(--tiles-default-labels-size));
+          text-transform: var(--tiles-label-transform, none);
+          padding: var(--tiles-label-padding, var(--tiles-default-labels-padding));
       }
       
       paper-button.on .label {
-          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-common-label-color-on, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
+          color: var(--tiles-label-color-on, var(--tiles-label-color, var(--tiles-default-contents-color)));
       }
       
       paper-button.off .label {
-          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-common-label-color-off, var(--tiles-common-label-color, var(--tiles-default-contents-color)))));
+          color: var(--tiles-label-color-off, var(--tiles-label-color, var(--tiles-default-contents-color)));
+      }
+      
+      paper-button.disabled .label {
+          color: var(--tiles-label-color-disabled, var(--tiles-label-color, var(--tiles-default-contents-color)));
       }
       
       paper-button .labelSec {
-          color: var(--tiles-label-sec-color, var(--tiles-common-label-sec-color, var(--tiles-default-contents-color)));
-          font-size: var(--tiles-label-sec-size, var(--tiles-common-label-sec-size, var(--tiles-default-labels-size)));
-          text-transform: var(--tiles-label-sec-transform, var(--tiles-common-label-sec-transform, none));
-          padding: var(--tiles-label-sec-padding, var(--tiles-common-label-sec-padding, var(--tiles-default-labels-padding)));
+          color: var(--tiles-label-sec-color, var(--tiles-default-contents-color));
+          font-size: var(--tiles-label-sec-size, var(--tiles-default-labels-size));
+          text-transform: var(--tiles-label-sec-transform, none);
+          padding: var(--tiles-label-sec-padding, var(--tiles-default-labels-padding));
       }
       
       paper-button.on .labelSec {
-          color: var(--tiles-label-sec-color-on, var(--tiles-label-sec-color, var(--tiles-common-label-sec-color-on, var(--tiles-common-label-sec-color, var(--tiles-default-contents-color)))));
+          color: var(--tiles-label-sec-color-on, var(--tiles-label-sec-color, var(--tiles-default-contents-color)));
       }
       
       paper-button.off .labelSec {
-          color: var(--tiles-label-sec-color-off, var(--tiles-label-sec-color, var(--tiles-common-label-sec-color-off, var(--tiles-common-label-sec-color, var(--tiles-default-contents-color)))));
+          color: var(--tiles-label-sec-color-off, var(--tiles-label-sec-color, var(--tiles-default-contents-color)));
       }
       
-      paper-button[disabled] {
-          opacity: var(--tiles-opacity-disabled, var(--tiles-common-opacity-disabled, var(--tiles-default-opacity-disabled)));
-      }
-      
-      paper-button div.paperButtonLegacy{
-          text-align: var(--tiles-text-align-legacy, var(--tiles-common-text-align-legacy, center));
-          text-transform: var(--tiles-label-transform, var(--tiles-common-label-transform, uppercase));
-          font-size: var(--tiles-label-size, var(--tiles-common-label-size, var(--tiles-default-labels-size)));
+      paper-button.disabled .labelSec {
+          color: var(--tiles-label-sec-color-disabled, var(--tiles-label-sec-color, var(--tiles-default-contents-color)));
       }
   `;
   }
