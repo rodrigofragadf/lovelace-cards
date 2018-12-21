@@ -45,7 +45,7 @@ class TilesCard extends HTMLElement {
 
     var entitiesStyleValues = document.createElement('style');
     entitiesStyleValues.id = "entitiesStyleValues";
-    if(cardConfig.common_settings) entitiesStyleValues.textContent = this._getStylesPaperComponent(cardConfig.common_settings);
+    if(cardConfig.global_settings) entitiesStyleValues.textContent = this._getStylesPaperComponent(cardConfig.global_settings);
     card.appendChild(entitiesStyleValues);
 
     var content = this._createContentCard(cardConfig, entitiesStyleValues);
@@ -97,39 +97,39 @@ class TilesCard extends HTMLElement {
       entity.id = "component_"+index;
 
       entity.domain = entity.entity ? entity.entity.split('.')[0] : "";
-      entity.disable = (entity.disable === undefined) ? (config.common_settings && config.common_settings.disable) : entity.disable;
+      entity.disable = (entity.disable === undefined) ? (config.global_settings && config.global_settings.disable) : entity.disable;
 
       if(this._DOMAIN_INPUT_SELECT.includes(entity.domain)) {
         
-        entity.icon = (entity.icon === undefined) ? (config.common_settings && config.common_settings.icon) : entity.icon;
+        entity.icon = (entity.icon === undefined) ? (config.global_settings && config.global_settings.icon) : entity.icon;
 
         if(!entity.icon) entity.icon = "";
         else if(typeof(entity.icon) == "string") entity.icon = {value: entity.icon};
         else if(typeof(entity.icon) == "object" && entity.icon.color && typeof(entity.icon.color) == "object") entity.icon.color = entity.icon.color.value;
 
-        if(!entity.title && config.common_settings && config.common_settings.listbox && config.common_settings.listbox.title) 
-          entity.title = config.common_settings.listbox.title;
+        if(!entity.title && config.global_settings && config.global_settings.listbox && config.global_settings.listbox.title) 
+          entity.title = config.global_settings.listbox.title;
           
         paperComponent = this._createPaperDropdownMenu(entity);
       } else {
         
-        if(entity.label === undefined && config.common_settings && config.common_settings.label) {
-          if(typeof(config.common_settings.label) == "string") entity.label = {value: config.common_settings.label};
-          else entity.label = {value: config.common_settings.label.value};
+        if(entity.label === undefined && config.global_settings && config.global_settings.label) {
+          if(typeof(config.global_settings.label) == "string") entity.label = {value: config.global_settings.label};
+          else entity.label = {value: config.global_settings.label.value};
         }
 
-        if(entity.label_sec === undefined && config.common_settings && config.common_settings.label_sec) {
-          if(typeof(config.common_settings.label_sec) == "string") entity.label_sec = {value: config.common_settings.label_sec};
-          else entity.label_sec = {value: config.common_settings.label_sec.value};
+        if(entity.label_sec === undefined && config.global_settings && config.global_settings.label_sec) {
+          if(typeof(config.global_settings.label_sec) == "string") entity.label_sec = {value: config.global_settings.label_sec};
+          else entity.label_sec = {value: config.global_settings.label_sec.value};
         }
 
-        if(entity.icon === undefined && config.common_settings && config.common_settings.icon) {
-          if(typeof(config.common_settings.icon) == "string") entity.icon = {value: config.common_settings.icon};
+        if(entity.icon === undefined && config.global_settings && config.global_settings.icon) {
+          if(typeof(config.global_settings.icon) == "string") entity.icon = {value: config.global_settings.icon};
           else {
-            entity.icon = { value: config.common_settings.icon.value, 
-                            value_on: config.common_settings.icon.value_on, 
-                            value_off: config.common_settings.icon.value_off, 
-                            value_disabled: config.common_settings.icon.value_disabled};
+            entity.icon = { value: config.global_settings.icon.value, 
+                            value_on: config.global_settings.icon.value_on, 
+                            value_off: config.global_settings.icon.value_off, 
+                            value_disabled: config.global_settings.icon.value_disabled};
           } 
         }
 
@@ -254,8 +254,8 @@ class TilesCard extends HTMLElement {
     paperButton.raised = true;
     paperButton.animate = true;
     paperButton.tabIndex = 0;
-    paperButton.style.textAlign = "var(--tiles-text-align-legacy, var(--tiles-common-text-align-legacy, center))";
-    paperButton.style.textTransform = "var(--tiles-label-transform, var(--tiles-common-label-transform, uppercase))";
+    paperButton.style.textAlign = "var(--tiles-text-align-legacy, var(--tiles-default-text-align-legacy))";
+    paperButton.style.textTransform = "var(--tiles-label-transform, var(--tiles-default-label-transform))";
 
     if(this._hasIcon(entity)){
       var ironIcon = document.createElement('iron-icon');
@@ -347,11 +347,12 @@ class TilesCard extends HTMLElement {
       var divInputWrapper = paperInputContainer.shadowRoot.children[2];
       var paperInputLabel = paperInputContainer.children[1];
       paperInputContainer.setAttribute("style", "padding: 0px;");
-      divInputWrapper.setAttribute("style", "height: var(--tiles-listbox-input-height, var(--tiles-common-listbox-input-height, none));");
-      paperInputLabel.setAttribute("style", "height: var(--tiles-listbox-title-height, var(--tiles-common-listbox-title-height, none));");
+
+      divInputWrapper.setAttribute("style", "height: var(--tiles-listbox-input-height, var(--tiles-default-listbox-input-height));");
+      paperInputLabel.setAttribute("style", "height: var(--tiles-listbox-title-height, var(--tiles-default-listbox-title-height));");
       var input = paperInputContainer.children[2].children[0];
-      input.setAttribute("style", `color: var(--tiles-listbox-input-color, var(--tiles-common-listbox-input-color, var(--tiles-listbox-title-color, var(--tiles-common-listbox-title-color, #fff)))); 
-                                   text-transform: var(--tiles-listbox-input-transform, var(--tiles-common-listbox-input-transform, var(--tiles-listbox-title-transform, var(--tiles-common-listbox-title-transform, none))));`);
+      input.setAttribute("style", `color: var(--tiles-listbox-input-color, var(--tiles-default-listbox-input-color)); 
+                                   text-transform: var(--tiles-listbox-input-transform, var(--tiles-default-listbox-input-transform));`);
       if(!entity.title) paperInputContainer.shadowRoot.children[1].style.display = "none";
 
       divPaperDropdownMenu.styleApplied = true;
@@ -442,6 +443,13 @@ class TilesCard extends HTMLElement {
     style += ` --tiles-default-listbox-itens-color: var(--tiles-listbox-input-color, var(--tiles-listbox-title-color, var(--tiles-default-contents-color)));\n`;
     style += ` --tiles-default-listbox-itens-size: var(--tiles-listbox-input-size, var(--paper-input-container-shared-input-style_-_font-size, var(--tiles-default-titles-size)));\n`;
     style += ` --tiles-default-listbox-itens-transform: var(--tiles-listbox-input-transform, var(--tiles-listbox-title-transform, none));\n`;
+
+    style += ` --tiles-default-text-align-legacy: center;\n`;
+    style += ` --tiles-default-label-transform: uppercase;\n`;
+    style += ` --tiles-default-listbox-input-height: none;\n`;
+    style += ` --tiles-default-listbox-title-height: none;\n`;
+    style += ` --tiles-default-listbox-input-color: var(--tiles-listbox-title-color, var(--tiles-default-contents-color));\n`; 
+    style += ` --tiles-default-listbox-input-transform: var(--tiles-listbox-title-transform, none);\n`; 
 
     return style+"}\n";
   }
@@ -757,12 +765,12 @@ class TilesCard extends HTMLElement {
   _convertLegacyConfig(config){
     var newConfig = {};
     newConfig.card_settings = {};
-    newConfig.common_settings = {};
-    newConfig.common_settings.background = {};
-    newConfig.common_settings.label = {color: {}};
-    newConfig.common_settings.label_sec = {color: {}};
-    newConfig.common_settings.icon = {color: {}};
-    newConfig.common_settings.legacy_config = true;
+    newConfig.global_settings = {};
+    newConfig.global_settings.background = {};
+    newConfig.global_settings.label = {color: {}};
+    newConfig.global_settings.label_sec = {color: {}};
+    newConfig.global_settings.icon = {color: {}};
+    newConfig.global_settings.legacy_config = true;
     newConfig.legacy_config = true;
     newConfig.entities = [];
 
@@ -772,35 +780,35 @@ class TilesCard extends HTMLElement {
     if(config.row_height) newConfig.card_settings.row_height = config.row_height;
     if(config.gap) newConfig.card_settings.gap = config.gap;
 
-    if(config.text_align) newConfig.common_settings.text_align_legacy = config.text_align;
-    if(config.text_uppercase === false) newConfig.common_settings.label.transform = "none";
+    if(config.text_align) newConfig.global_settings.text_align_legacy = config.text_align;
+    if(config.text_uppercase === false) newConfig.global_settings.label.transform = "none";
 
-    if(config.color) newConfig.common_settings.background.value = config.color;
-    if(config.color_on) newConfig.common_settings.background.value_on = config.color_on;
-    if(config.color_off) newConfig.common_settings.background.value_off = config.color_off;
+    if(config.color) newConfig.global_settings.background.value = config.color;
+    if(config.color_on) newConfig.global_settings.background.value_on = config.color_on;
+    if(config.color_off) newConfig.global_settings.background.value_off = config.color_off;
 
-    if(config.label) newConfig.common_settings.label.value = config.label;
+    if(config.label) newConfig.global_settings.label.value = config.label;
     if(config.text_color) {
-      newConfig.common_settings.label.color.value = config.text_color;
-      newConfig.common_settings.icon.color.value = config.text_color;
+      newConfig.global_settings.label.color.value = config.text_color;
+      newConfig.global_settings.icon.color.value = config.text_color;
     } 
     if(config.text_color_on) {
-      newConfig.common_settings.label.color.value_on = config.text_color_on;
-      newConfig.common_settings.icon.color.value_on = config.text_color_on;
+      newConfig.global_settings.label.color.value_on = config.text_color_on;
+      newConfig.global_settings.icon.color.value_on = config.text_color_on;
     } 
     if(config.text_color_off) {
-      newConfig.common_settings.label.color.value_off = config.text_color_off;
-      newConfig.common_settings.icon.color.value_off = config.text_color_off;
+      newConfig.global_settings.label.color.value_off = config.text_color_off;
+      newConfig.global_settings.icon.color.value_off = config.text_color_off;
     } 
-    if(config.text_size) newConfig.common_settings.label.size = config.text_size;
+    if(config.text_size) newConfig.global_settings.label.size = config.text_size;
 
-    if(config.label_sec) newConfig.common_settings.label_sec.value = config.label_sec;
-    if(config.text_sec_color) newConfig.common_settings.label_sec.color.value = config.text_sec_color;
-    if(config.text_sec_color_on) newConfig.common_settings.label_sec.color.value_on = config. text_sec_color_on;
-    if(config.text_sec_color_off) newConfig.common_settings.label_sec.color.value_off = config.text_sec_color_off;
-    if(config.text_sec_size) newConfig.common_settings.label_sec.size = config.text_sec_size;
+    if(config.label_sec) newConfig.global_settings.label_sec.value = config.label_sec;
+    if(config.text_sec_color) newConfig.global_settings.label_sec.color.value = config.text_sec_color;
+    if(config.text_sec_color_on) newConfig.global_settings.label_sec.color.value_on = config. text_sec_color_on;
+    if(config.text_sec_color_off) newConfig.global_settings.label_sec.color.value_off = config.text_sec_color_off;
+    if(config.text_sec_size) newConfig.global_settings.label_sec.size = config.text_sec_size;
 
-    if(config.icon_size) newConfig.common_settings.icon.size = config.icon_size;
+    if(config.icon_size) newConfig.global_settings.icon.size = config.icon_size;
 
     config.entities.forEach((entity) => {
 
@@ -830,16 +838,16 @@ class TilesCard extends HTMLElement {
       if(entity.label) newEntity.label.value = entity.label;
       if(entity.label_state) newEntity.label.state = entity.label_state;
       if(entity.text_color) {
-        newEntity.common_settings.label.color.value = entity.text_color;
-        newEntity.common_settings.icon.color.value = entity.text_color;
+        newEntity.global_settings.label.color.value = entity.text_color;
+        newEntity.global_settings.icon.color.value = entity.text_color;
       } 
       if(entity.text_color_on) {
-        newEntity.common_settings.label.color.value_on = entity.text_color_on;
-        newEntity.common_settings.icon.color.value_on = entity.text_color_on;
+        newEntity.global_settings.label.color.value_on = entity.text_color_on;
+        newEntity.global_settings.icon.color.value_on = entity.text_color_on;
       } 
       if(entity.text_color_off) {
-        newEntity.common_settings.label.color.value_off = entity.text_color_off;
-        newEntity.common_settings.icon.color.value_off = entity.text_color_off;
+        newEntity.global_settings.label.color.value_off = entity.text_color_off;
+        newEntity.global_settings.icon.color.value_off = entity.text_color_off;
       } 
       if(entity.text_size) newEntity.label.size = entity.text_size;
   
