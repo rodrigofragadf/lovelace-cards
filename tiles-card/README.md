@@ -24,16 +24,16 @@ views:
 
         card_settings: 
           title: Card Title #(optional)
-          title_color: white #color
-          title_align: center #(optional)(left, center, right)(default left)
-          columns: 4 #(number)
-          column_width: calc(90%/4) #(px, %, auto)
-          row_height: 35px #(px, %, auto)
+          title_color: white #(optional)#color
+          title_align: center #(optional)(left, center, right)
+          columns: 4 #(optional)(number)
+          column_width: calc(90%/4) #(optional)(px, %, auto)
+          row_height: 35px #(optional)(px, %, auto)
           background: gray #(optional)(image or color)(for image use url()) ex. 'url(/local/icons/mobile-television.png)'
-          display: show #hidden, none, show
+          display: show #(optional)#hidden, none, show
           gap: 10px #(optional)
           padding: 10px #(optional)
-          align: center #(optional)(left, center, right)(default left)
+          align: center #(optional)(left, center, right)
           templates: #(optional)
             background: "return 'url(/local/icons/mobile-television.png)'" #(optional)
             display: "return 'show'" #(optional)
@@ -108,7 +108,7 @@ views:
             itens_transform: lowercase #(optional)
             list_background: black #(optional)
 
-          background: transparent #(optional)
+          background: #(optional)
             value: '#0f2547' #(optional) (color or image, for image use url()) ex. 'url(/local/icons/mobile-television.png)'
             value_on: green #(optional)
             value_off: red #(optional)
@@ -191,7 +191,7 @@ views:
                 size: 18px #(optional)
                 padding: 0px #(optional)
 
-              background: transparent #(optional)
+              background: #(optional)
                 value: '#0f2547' #(optional) (color or image, for image use url()) ex. 'url(/local/icons/mobile-television.png)'
                 value_on: green #(optional)
                 value_off: red #(optional)
@@ -273,7 +273,7 @@ views:
                 size: 18px #(optional)
                 padding: 0px #(optional)
 
-              background: transparent #(optional)
+              background: #(optional)
                 value: '#0f2547' #(optional) (color or image, for image use url()) ex. 'url(/local/icons/mobile-television.png)'
                 value_on: green #(optional)
                 value_off: red #(optional)
