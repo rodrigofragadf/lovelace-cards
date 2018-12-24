@@ -34,10 +34,12 @@ views:
           gap: 10px #(optional)
           padding: 10px #(optional)
           align: center #(optional)(left, center, right)
+          theme: night #(optional)
           templates: #(optional)
             background: "return 'url(/local/icons/mobile-television.png)'" #(optional)
             display: "return 'show'" #(optional)
             style: "return 'background: black;'" #(optional)
+            theme: "return 'day'"
 
         global_settings: #(Settings here are applied to all entities)
           display: show #(optional)(hidden, none, show)
