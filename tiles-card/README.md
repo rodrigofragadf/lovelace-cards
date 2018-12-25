@@ -1,4 +1,4 @@
-# Tiles Custom Card for [Home Assistant](https://home-assistant.io)
+# Tiles Card for [Lovelace](https://www.home-assistant.io/lovelace/)
 
 ## Installation
 1. Download the [tiles-card.js](https://github.com/rodrigofragadf/lovelace-cards/raw/master/tiles-card/tiles-card.js).
@@ -11,10 +11,20 @@ resources:
     type: js
 ```
 ## Setup
-Tiles card supports two configuration modes, legacy and default. With legacy mode you can use your old tiles settings in lovelace tiles card, see instructions at the bottom of the page. 
-
-## Default Config
 Below is the default configuration structure, more detailed documentation will be released in the future.
+
+Some features available on the card:
+
+- Support for lists (using input_select)
+- Support for themes
+- Opacity support
+- Grayscale support
+- Border support
+- Shadow support
+- Disable unavailable entities
+- And more...
+
+NOTE: This version no longer supports the legacy configuration, now available in [tiles-card-legacy](https://github.com/rodrigofragadf/lovelace-cards/tree/master/tiles-card-legacy).
 
 ```yaml
 views:
@@ -48,6 +58,7 @@ views:
           align: 'center middle' #(optional)(letf, center, right, top, middle, bottom)
           disable: false #(optional)(true or false)
           shadow: 'elevation: 12dp' #(optional)(elevation: 2dp, 3dp, 4dp, 6dp, 8dp, 12dp, 16dp or 24dp or box-shadow css attributes)
+          disable_if_unavailable: false #(optional)(true ou false)
 
           label: #(optional)
             value: Label #(optional)
@@ -318,57 +329,3 @@ views:
                 grayscale: "return 1" #(optional)
                 border_color: "return 'red'" #(optional)
 ```
-
-## Legacy Config
-To use your old tiles settings simply copy the contents of `config:` from `customize:` to your new config in `ui-lovelace.yaml` by changing the `config:` attribute to `legacy_config:`. See the example:
-
-```yaml
-homeassistant:
-  customize:
-    input_boolean.test_tiles:
-      custom_ui_state_card: state-card-tiles
-      config:
-        color: green
-        color_on: yellow
-        color_off: red
-        columns: 4
-        column_width: 70px
-        row_height: 35px
-        gap: 5px
-        entities:
-          - entity: light.light_1
-            label: Text
-            column: 1
-            column_span: 4
-            row: 1
-            row_span: 2
-            icon: mdi:light
- ```
-
-The only difference is the `title:` attribute that was created to add a title to your card, see the configuration in the `ui-lovelace.yaml` file:
-
- ```yaml
-views:
-  - title: Title View
-    cards:
-      - type: custom:tiles-card
-        legacy_config:
-          title: Title Card
-          color: green
-          color_on: yellow
-          color_off: red
-          columns: 4
-          column_width: 70px
-          row_height: 35px
-          gap: 5px
-          entities:
-            - entity: light.light_1
-              label: Text
-              column: 1
-              column_span: 4
-              row: 1
-              row_span: 2
-              icon: mdi:light
- ```
-
-This should work the same way as the previous tiles version.
