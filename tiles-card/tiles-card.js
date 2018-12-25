@@ -14,9 +14,6 @@ class TilesCard extends HTMLElement {
 
   setConfig(config) {
 
-    if(config.legacy_config)
-      config = this._convertLegacyConfig(config.legacy_config);
-
     if(!config.entities) {
         throw new Error('Please define your entities');
     }
@@ -140,7 +137,7 @@ class TilesCard extends HTMLElement {
         if(!entity.label_sec) entity.label_sec = "";
         else if(typeof(entity.label_sec) == "string") entity.label_sec = {value: entity.label_sec};
 
-        paperComponent = config.legacy_config ? this._createPaperButtonLegacy(entity) : this._createPaperButton(entity);
+        paperComponent = this._createPaperButton(entity);
       } 
 
       entitiesStyleValues.textContent += this._getStylesPaperComponent(entity);
@@ -155,6 +152,9 @@ class TilesCard extends HTMLElement {
   _updateContentCard(entitiesTiles, card) {
     var cardConfig = this._config;
     var content = card.children.namedItem("div-tiles");
+    var disableUnavailable = true
+
+    if(cardConfig.global_settings && cardConfig.global_settings.disable_if_unavailable === false) disableUnavailable = false;
 
     // Compute card templates if exists
     if(cardConfig.card_settings.templates) this._computeCardStylesFromTemplate(card, cardConfig.card_settings);
@@ -171,8 +171,11 @@ class TilesCard extends HTMLElement {
       paperComponent.className = this._getClassPaperButton(entity);
       entity.className = this._getClassPaperButton(entity);
 
+      if(disableUnavailable && entity.className === 'unavailable') entity.unavailable = true;
+      else entity.unavailable = false;
+
       // If disabled replace the classname
-      if(entity.disable === true) {
+      if(entity.disable === true || entity.unavailable === true) {
         entity.oldIcon = this._getIconValue(entity);
         paperComponent.className = "disabled";
         entity.className = "disabled";
@@ -192,13 +195,8 @@ class TilesCard extends HTMLElement {
         var label = this._hasLabel(entity) ? this._getLabel(entity) : "";
         var labelSec = this._hasLabelSec(entity) ? this._getLabelSec(entity) : "";
 
-        if(cardConfig.legacy_config) {
-          if(label) paperComponent.getElementsByTagName('tiles-button-legacy')[0].innerHTML = (ironIcon ? ironIcon.outerHTML : "")+label;
-          if(labelSec) paperComponent.getElementsByClassName('labelSec')[0].innerHTML = labelSec;
-        } else {
-          if(label) paperComponent.getElementsByClassName('label')[0].innerHTML = label;
-          if(labelSec) paperComponent.getElementsByClassName('labelSec')[0].innerHTML = labelSec;
-        }
+        if(label) paperComponent.getElementsByClassName('label')[0].innerHTML = label;
+        if(labelSec) paperComponent.getElementsByClassName('labelSec')[0].innerHTML = labelSec;
       }
 
     });
@@ -246,40 +244,6 @@ class TilesCard extends HTMLElement {
     return entity.domain || entity.more_info || entity.service;
   }
 
-  _createPaperButtonLegacy(entity) {
-    var paperButton = document.createElement('paper-button');
-    var divPaperButton = document.createElement('tiles-button-legacy');
-    divPaperButton.style.width = "100%";
-    paperButton.appendChild(divPaperButton);
-    paperButton.raised = true;
-    paperButton.animate = true;
-    paperButton.tabIndex = 0;
-    paperButton.style.textAlign = "var(--tiles-text-align-legacy, var(--tiles-default-text-align-legacy))";
-    paperButton.style.textTransform = "var(--tiles-label-transform, var(--tiles-default-label-transform))";
-
-    if(this._hasIcon(entity)){
-      var ironIcon = document.createElement('iron-icon');
-      divPaperButton.appendChild(ironIcon);
-    }
-
-    if(this._hasLabel(entity)) divPaperButton.innerHTML += entity.label.value;
-
-    if(this._hasLabelSec(entity)){
-      var div = document.createElement('div');
-      div.className = "labelSec";
-      div.style.width = "100%";
-      div.innerHTML = entity.label_sec.value;
-      paperButton.appendChild(div);
-    }
-
-    paperButton.disable = function(value){};
-
-    if(this._isClickable(entity)) paperButton.addEventListener('click', event => { this._onClick(entity) });
-    else paperButton.style.setProperty("cursor", "default");
-
-    return paperButton;
-  }
-
   _createPaperDropdownMenu(entity){
     var divPaperDropdownMenu = document.createElement('tiles-listbox');
     var paperDropdownMenu = document.createElement('paper-dropdown-menu');
@@ -311,6 +275,7 @@ class TilesCard extends HTMLElement {
           var paperItem = document.createElement('paper-item');
           paperItem.innerHTML = item;
           paperItem.className = "itemLista";
+          paperItem.style.setProperty("cursor", "pointer");
           paperItem.addEventListener('click', event => {
             entity.data = { entity_id: entity.entity, option: item };
             card._onClick(entity);
@@ -347,7 +312,6 @@ class TilesCard extends HTMLElement {
       var divInputWrapper = paperInputContainer.shadowRoot.children[2];
       var paperInputLabel = paperInputContainer.children[1];
       paperInputContainer.setAttribute("style", "padding: 0px;");
-
       divInputWrapper.setAttribute("style", "height: var(--tiles-listbox-input-height, var(--tiles-default-listbox-input-height));");
       paperInputLabel.setAttribute("style", "height: var(--tiles-listbox-title-height, var(--tiles-default-listbox-title-height));");
       var input = paperInputContainer.children[2].children[0];
@@ -415,13 +379,13 @@ class TilesCard extends HTMLElement {
     style += ` --tiles-default-labels-padding: 0px;\n`;
     style += ` --tiles-default-opacity: 1;\n`;
     style += ` --tiles-default-opacity-disabled: 0.5;\n`;
-    style += ` --tiles-default-padding: ${cardConfig.legacy_config ? '8.4px 6.85px' : '0px'};\n`;
+    style += ` --tiles-default-padding: 0px;\n`;
     style += ` --tiles-default-listbox-padding: 0px;\n`;
     style += ` --tiles-default-dropdownmenu-padding: 0px 5px;\n`;
     style += ` --tiles-default-grayscale: none;\n`;
-    style += ` --tiles-default-contents-color: ${cardConfig.legacy_config ? '#ffffff' : 'var(--primary-text-color)'};\n`;
+    style += ` --tiles-default-contents-color: var(--primary-text-color);\n`;
     style += ` --tiles-default-box-shadow: none;\n`;
-    style += ` --tiles-default-image-size: ${cardConfig.legacy_config ? 'none' : 'contain'};\n`;
+    style += ` --tiles-default-image-size: contain;\n`;
     style += ` --tiles-default-grid-area: auto / auto / span 1 / span 1;\n`;
     style += ` --tiles-default-display: flex;\n`;
     style += ` --tiles-default-visibility: visible;\n`;
@@ -443,8 +407,6 @@ class TilesCard extends HTMLElement {
     style += ` --tiles-default-listbox-itens-color: var(--tiles-listbox-input-color, var(--tiles-listbox-title-color, var(--tiles-default-contents-color)));\n`;
     style += ` --tiles-default-listbox-itens-size: var(--tiles-listbox-input-size, var(--paper-input-container-shared-input-style_-_font-size, var(--tiles-default-titles-size)));\n`;
     style += ` --tiles-default-listbox-itens-transform: var(--tiles-listbox-input-transform, var(--tiles-listbox-title-transform, none));\n`;
-
-    style += ` --tiles-default-text-align-legacy: center;\n`;
     style += ` --tiles-default-label-transform: uppercase;\n`;
     style += ` --tiles-default-listbox-input-height: none;\n`;
     style += ` --tiles-default-listbox-title-height: none;\n`;
@@ -588,8 +550,6 @@ class TilesCard extends HTMLElement {
       
     } 
 
-    if(tilesConfig.text_align_legacy) style += ` --tiles-text-align-legacy: ${tilesConfig.text_align_legacy};\n`;
-
     if(style) style = (tilesConfig.id ? `\n#${tilesConfig.id} {\n` : '\n:host {\n/*COMMON SETTINGS VALUES*/\n')+style+"}\n";
 
     return style;
@@ -694,6 +654,8 @@ class TilesCard extends HTMLElement {
       return '';
     } else if(!entityId || this._DOMAIN_INPUT_SELECT.includes(entityId.split('.')[0])) {
       return '';
+    } else if(this.myHass.states[entityId] && this.myHass.states[entityId].state === 'unavailable') {
+      return 'unavailable';
     } else {
       return this.myHass.states[entityId] && this._ON_STATES.includes(this.myHass.states[entityId].state) ? 'on' : 'off';
     }
@@ -760,122 +722,6 @@ class TilesCard extends HTMLElement {
     var size = (this._config.entities.length / this._config.card_settings.columns);
     if(this._config.card_settings.title) size++;
     return size;
-  }
-
-  _convertLegacyConfig(config){
-    var newConfig = {};
-    newConfig.card_settings = {};
-    newConfig.global_settings = {};
-    newConfig.global_settings.background = {};
-    newConfig.global_settings.label = {color: {}};
-    newConfig.global_settings.label_sec = {color: {}};
-    newConfig.global_settings.icon = {color: {}};
-    newConfig.global_settings.legacy_config = true;
-    newConfig.legacy_config = true;
-    newConfig.entities = [];
-
-    if(config.title) newConfig.card_settings.title = config.title;
-    if(config.columns) newConfig.card_settings.columns = config.columns;
-    if(config.column_width) newConfig.card_settings.column_width = config.column_width;
-    if(config.row_height) newConfig.card_settings.row_height = config.row_height;
-    if(config.gap) newConfig.card_settings.gap = config.gap;
-
-    if(config.text_align) newConfig.global_settings.text_align_legacy = config.text_align;
-    if(config.text_uppercase === false) newConfig.global_settings.label.transform = "none";
-
-    if(config.color) newConfig.global_settings.background.value = config.color;
-    if(config.color_on) newConfig.global_settings.background.value_on = config.color_on;
-    if(config.color_off) newConfig.global_settings.background.value_off = config.color_off;
-
-    if(config.label) newConfig.global_settings.label.value = config.label;
-    if(config.text_color) {
-      newConfig.global_settings.label.color.value = config.text_color;
-      newConfig.global_settings.icon.color.value = config.text_color;
-    } 
-    if(config.text_color_on) {
-      newConfig.global_settings.label.color.value_on = config.text_color_on;
-      newConfig.global_settings.icon.color.value_on = config.text_color_on;
-    } 
-    if(config.text_color_off) {
-      newConfig.global_settings.label.color.value_off = config.text_color_off;
-      newConfig.global_settings.icon.color.value_off = config.text_color_off;
-    } 
-    if(config.text_size) newConfig.global_settings.label.size = config.text_size;
-
-    if(config.label_sec) newConfig.global_settings.label_sec.value = config.label_sec;
-    if(config.text_sec_color) newConfig.global_settings.label_sec.color.value = config.text_sec_color;
-    if(config.text_sec_color_on) newConfig.global_settings.label_sec.color.value_on = config. text_sec_color_on;
-    if(config.text_sec_color_off) newConfig.global_settings.label_sec.color.value_off = config.text_sec_color_off;
-    if(config.text_sec_size) newConfig.global_settings.label_sec.size = config.text_sec_size;
-
-    if(config.icon_size) newConfig.global_settings.icon.size = config.icon_size;
-
-    config.entities.forEach((entity) => {
-
-      var newEntity = {};
-      newEntity.background = {};
-      newEntity.label = {color: {}};
-      newEntity.label_sec = {color: {}};
-      newEntity.icon = {color: {}};
-      newEntity.templates = {};
-
-      if(entity.column) newEntity.column = entity.column;
-      if(entity.column_span) newEntity.column_span = entity.column_span;
-      if(entity.row) newEntity.row = entity.row;
-      if(entity.row_span) newEntity.row_span = entity.row_span;
-      if(entity.text_uppercase === false) newEntity.label.transform = "none";
-
-      if(entity.entity) newEntity.entity = entity.entity;
-      if(entity.service) newEntity.service = entity.service;
-      if(entity.data) newEntity.data = entity.data;
-      if(entity.more_info) newEntity.more_info = entity.more_info;
-      if(entity.text_align) newEntity.text_align_legacy = entity.text_align;
-      
-      if(entity.color) newEntity.background.value = entity.color;
-      if(entity.color_on) newEntity.background.value_on = entity.color_on;
-      if(entity.color_off) newEntity.background.value_off = entity.color_off;
-  
-      if(entity.label) newEntity.label.value = entity.label;
-      if(entity.label_state) newEntity.label.state = entity.label_state;
-      if(entity.text_color) {
-        newEntity.global_settings.label.color.value = entity.text_color;
-        newEntity.global_settings.icon.color.value = entity.text_color;
-      } 
-      if(entity.text_color_on) {
-        newEntity.global_settings.label.color.value_on = entity.text_color_on;
-        newEntity.global_settings.icon.color.value_on = entity.text_color_on;
-      } 
-      if(entity.text_color_off) {
-        newEntity.global_settings.label.color.value_off = entity.text_color_off;
-        newEntity.global_settings.icon.color.value_off = entity.text_color_off;
-      } 
-      if(entity.text_size) newEntity.label.size = entity.text_size;
-  
-      if(entity.label_sec) newEntity.label_sec.value = entity.label_sec;
-      if(entity.label_sec_state) newEntity.label_sec.state = entity.label_sec_state;
-      if(entity.text_sec_color) newEntity.label_sec.color.value = entity.text_sec_color;
-      if(entity.text_sec_color_on) newEntity.label_sec.color.value_on = entity. text_sec_color_on;
-      if(entity.text_sec_color_off) newEntity.label_sec.color.value_off = entity.text_sec_color_off;
-      if(entity.text_sec_size) newEntity.label_sec.size = entity.text_sec_size;
-      
-      if(entity.icon) newEntity.icon.value = entity.icon;
-      if(entity.icon_size) newEntity.icon.size = entity.icon_size;
-
-      if(entity.image){
-        newEntity.background.value = `url("${entity.image}")`;
-        newEntity.background.value_on = `url("${entity.image}")`;
-        newEntity.background.value_off = `url("${entity.image}")`;
-      } 
-
-      if(entity.icon_template) newEntity.templates.icon = entity.icon_template;
-      if(entity.label_template) newEntity.templates.label = entity.label_template;
-      if(entity.label_sec_template) newEntity.templates.label_sec = entity.label_sec_template;
-      if(entity.style_template) newEntity.templates.style = entity.style_template;
-
-      newConfig.entities.push(newEntity);
-    });
-
-    return newConfig;
   }
 
   _getCardStyle() {
