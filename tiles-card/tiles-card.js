@@ -165,6 +165,7 @@ class TilesCard extends HTMLElement {
       var ironIcon = paperComponent.getElementsByTagName('iron-icon').item(0);
 
       // Compute entity templates if exists
+      this._addGlobalTemplates(cardConfig, entity);
       if(entity.templates) this._computeEntityStylesFromTemplate(paperComponent, entity);
 
       // Set component class
@@ -553,6 +554,34 @@ class TilesCard extends HTMLElement {
     if(style) style = (tilesConfig.id ? `\n#${tilesConfig.id} {\n` : '\n:host {\n/*COMMON SETTINGS VALUES*/\n')+style+"}\n";
 
     return style;
+  }
+
+  _addGlobalTemplates(cardConfig, entity){
+    if(cardConfig.global_settings && cardConfig.global_settings.templates) {
+
+      var globalTempalates = cardConfig.global_settings.templates;
+
+      if(!entity.templates) entity.templates = {};
+
+      if(!entity.templates.background) entity.templates.background = globalTempalates.background ? globalTempalates.background : "";
+      if(!entity.templates.label_color) entity.templates.label_color = globalTempalates.label_color ? globalTempalates.label_color : "";
+      if(!entity.templates.label_transform) entity.templates.label_transform = globalTempalates.label_transform ? globalTempalates.label_transform : "";
+      if(!entity.templates.label_sec_color) entity.templates.label_sec_color = globalTempalates.label_sec_color ? globalTempalates.label_sec_color : "";
+      if(!entity.templates.label_sec_transform) entity.templates.label_sec_transform = globalTempalates.label_sec_transform ? globalTempalates.label_sec_transform : "";
+      if(!entity.templates.icon_color) entity.templates.icon_color = globalTempalates.icon_color ? globalTempalates.icon_color : "";
+      if(!entity.templates.border_color) entity.templates.border_color = globalTempalates.border_color ? globalTempalates.border_color : "";
+      if(!entity.templates.display) entity.templates.display = globalTempalates.display ? globalTempalates.display : "";
+      if(!entity.templates.disable) entity.templates.disable = globalTempalates.disable ? globalTempalates.disable : "";
+      if(!entity.templates.opacity) entity.templates.opacity = globalTempalates.opacity ? globalTempalates.opacity : "";
+      if(!entity.templates.grayscale) entity.templates.grayscale = globalTempalates.grayscale ? globalTempalates.grayscale : "";
+
+      if(!entity.templates.title_color) entity.templates.title_color = globalTempalates.title_color ? globalTempalates.title_color : "";
+      if(!entity.templates.input_color) entity.templates.input_color = globalTempalates.input_color ? globalTempalates.input_color : "";
+      if(!entity.templates.itens_color) entity.templates.itens_color = globalTempalates.itens_color ? globalTempalates.itens_color : "";
+
+      if(!entity.templates.style) entity.templates.style = globalTempalates.style ? globalTempalates.style : "";
+
+    }
   }
 
   _computeCardStylesFromTemplate(card, cardConfig){
