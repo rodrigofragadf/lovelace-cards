@@ -398,6 +398,7 @@ class TilesCard extends HTMLElement {
     style += ` --tiles-default-orientation: column;\n`;
     style += ` --tiles-default-vertical-align: center;\n`;
     style += ` --tiles-default-horizontal-align: center;\n`;
+    style += ` --tiles-default-text-align: center;\n`;
     style += ` --tiles-default-background-disabled: var(--tiles-background,  var(--tiles-default-background));\n`;
     style += ` --tiles-default-border-color-disabled: var(--tiles-border-color, var(--tiles-default-contents-color));\n`;
     style += ` --tiles-default-grayscale-disabled: var(--tiles-grayscale, var(--tiles-default-grayscale));\n`;
@@ -523,6 +524,10 @@ class TilesCard extends HTMLElement {
         if(tilesConfig.align.indexOf("center") >= 0) style += ` --tiles-vertical-align: center;\n`;
         if(tilesConfig.align.indexOf("middle") >= 0) style += ` --tiles-horizontal-align: center;\n`;
       }
+
+      if(tilesConfig.align.indexOf("left") >= 0) style += ` --tiles-text-align: left;\n`;
+      if(tilesConfig.align.indexOf("right") >= 0) style += ` --tiles-text-align: right;\n`;
+      if(tilesConfig.align.indexOf("center") >= 0) style += ` --tiles-text-align: center;\n`;
     }
 
     if(tilesConfig.display) {
@@ -861,6 +866,7 @@ class TilesCard extends HTMLElement {
           font-size: var(--tiles-label-size, var(--tiles-default-labels-size));
           -webkit-filter: grayscale(var(--tiles-grayscale, var(--tiles-default-grayscale))); /* Google Chrome, Safari 6+ & Opera 15+ */
           filter: grayscale(var(--tiles-grayscale, var(--tiles-default-grayscale))); /* Microsoft Edge and Firefox 35+ */
+          text-align: var(--tiles-text-align, var(--tiles-default-text-align));
       
           --iron-icon-fill-color: var(--tiles-icon-color, var(--tiles-label-color, var(--tiles-default-contents-color)));
           --iron-icon-height: var(--tiles-icon-size, var(--tiles-default-icon-size));
